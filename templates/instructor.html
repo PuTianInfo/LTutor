@@ -1,0 +1,1157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Instructor — LeafTutor</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='instructor.css') }}">
+
+
+</head>
+
+<body class="instructor-page">
+
+  <!-- Navbar -->
+  <div class="navbar">
+    <div class="navbar-left">
+      <h1>LeafTutor</h1>
+      <div class="navbar-subtitle">Instructor Dashboard</div>
+    </div>
+    <div class="navbar-right">
+      <button id="instructor-tour-trigger" class="btn">Show Tour</button>
+      <div class="user-profile" id="userProfile" tabindex="0" role="button" aria-haspopup="true" aria-expanded="false">
+        <div class="user-avatar">IO</div>
+        <div class="user-info">
+          <div class="user-name">Instructor One</div>
+          <div class="user-email">instructor1@example.com</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Account dropdown -->
+  <div id="accountMenu" class="account-menu" aria-hidden="true">
+    <div class="am-head"><div class="am-title">My Account</div></div>
+    <div class="am-footer" style="display:flex;justify-content:space-between;align-items:center;">
+      <span class="muted">Signed in as <span id="meEmailSmall">instructor</span></span>
+      <a class="am-logout" href="/logout">Log out</a>
+    </div>
+  </div>
+
+  <!-- Main layout: sidebar (classes) & resizable roster and assignments panels -->
+  <div class="main-layout">
+    <!-- Sidebar = Classes -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header" style="display:flex;justify-content:space-between;align-items:center;">
+        <h3 style="margin:0">Classes</h3>
+        <div class="sidebar-controls" style="display:flex;gap:8px;align-items:center;">
+          <button id="addClassBtn" class="add-project-btn" title="Create class">+</button>
+
+          <button onclick="toggleSidebar()" class="collapse-btn" id="sidebarToggle" title="Collapse sidebar">←</button>
+        </div>
+      </div>
+
+      <!-- Inline create panel -->
+      <div id="classCreatePanel" class="card" style="display:none; margin:10px 12px;">
+        <div class="row row-create">
+          <input id="clsName" placeholder="Class name" />
+          <input id="clsTerm" placeholder="Term (e.g., Fall 2025)" />
+          <button id="classCreateOk" class="btn small">OK</button>
+        </div>
+      </div>
+
+      <div class="project-list" id="classTabList"></div>
+    </aside>
+
+    <!-- Middle + Right = resizable split -->
+    <div class="container">
+     <div id="rosterAssignSplit" class="lt-split">
+        <!-- Class Roster -->
+        <section class="card" id="rosterSection" aria-label="Roster">
+          <div class="section-header">
+            <h2>Class Roster</h2>
+            <div class="muted" id="rosterClassHint">No class selected</div>
+          </div>
+
+          <div id="rosterEmpty" class="card muted" style="text-align:center;padding:16px;">
+            Select a class on the left to manage its roster.
+          </div>
+
+          <div id="rosterBody" style="display:none;">
+            <!-- Manual Add -->
+            <div class="row" style="grid-template-columns: 1fr 1fr 1fr auto;">
+              <input id="stFirst" placeholder="First name" />
+              <input id="stLast" placeholder="Last name" />
+              <input id="stEmail" type="email" placeholder="Email" inputmode="email" />
+              <button class="btn small roster-add-btn" title="Add student" onclick="addStudent()">+</button>
+            </div>
+
+            <!-- Upload (Drag & Drop + Browse) -->
+            <div class="card" style="margin-top:12px">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+                <strong>Class Roster (CSV/XLSX)</strong>
+                <span class="tip" tabindex="0" role="button" aria-label="Roster format help">i
+                  <span class="tip-pop">Required columns: <b>first_name</b>, <b>last_name</b>, <b>email</b></span>
+                </span>
+
+              </div>
+
+              <div id="rosterDrop" class="dropzone" tabindex="0" aria-label="Roster file dropzone" style="margin-top:8px;">
+                Drop CSV/XLSX here or
+                <label style="text-decoration:underline;cursor:pointer;">
+                  choose a file
+                  <input id="rosterFile" type="file" accept=".csv,.xlsx" style="display:none">
+                </label>
+                <div class="muted" style="margin-top:6px">Duplicates will be ignored.</div>
+              </div>
+
+              <div id="rosterUploadMsg" class="muted" style="margin-top:6px"></div>
+            </div>
+
+            <!-- Roster List -->
+            <div class="list" id="studentList" style="margin-top:12px"></div>
+          </div>
+        </section>
+
+        <!-- Assignments -->
+        <section class="card" id="assignSection" aria-label="Assignments">
+          <div class="section-header">
+            <h2>Assignments</h2>
+            <div class="muted" id="assignClassHint">No class selected</div>
+          </div>
+          <!-- Assignment creator -->
+          <div class="card" style="margin-bottom:12px">
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <input id="newAsnTitle" placeholder="Assignment title" />
+              <button class="btn small" onclick="createAssignment()">Create</button>
+            </div>
+            <div id="newAsnMsg" class="muted" style="margin-top:6px"></div>
+          </div>
+
+          <!-- Assignment tabs/list -->
+          <div class="list" id="assignmentList" style="margin-top:6px"></div>
+
+          <!-- Files for selected assignment -->
+          <div class="card" id="asnFilesCard" style="margin-top:12px;display:none">
+            <div class="section-header">
+              <h3 id="asnFilesTitle" style="margin:0">Files</h3>
+              <div class="muted">Shown for selected assignment</div>
+            </div>
+            <div style="display:flex;gap:8px;align-items:center;margin:8px 0;">
+              <input type="file" id="asnUploadInput" multiple>
+              <button class="btn small"
+                onclick="uploadToAssignment(currentAsnId, document.getElementById('asnUploadInput'))">
+                Upload to this assignment
+              </button>
+            </div>
+            <div id="asnFilesList" class="list"></div>
+          </div>
+          <div id="assignDrop" class="dropzone">
+            Drop files here or
+            <label style="text-decoration:underline;cursor:pointer;">
+              choose files<input id="assignFiles" type="file" accept=".pdf,.txt,.md,.doc,.docx,.zip,.csv,.ppt,.pptx" multiple style="display:none">
+            </label>
+            <div class="muted" style="margin-top:6px">Files you upload are attached to the <b>selected assignment</b>.
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <!-- LEGACY: Loading overlay -->
+  <div id="loadingOverlay" class="loading-overlay">
+    <div class="spinner"></div>
+  </div>
+
+
+<script>
+/* ========= Tiny error trap ========= */
+// Helps catch unexpected issues during instructor dashboard interactions.
+window.addEventListener('error', e => {
+  console.error('[JS ERROR]', e.message, e);
+});
+
+/* ========= Helpers & globals ========= */
+const $id = (id) => document.getElementById(id);
+let currentClassId = null;
+let classesData = [];
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const isValidEmail = (e) => EMAIL_RE.test((e||'').trim().toLowerCase());
+
+// Adjust roster list height dynamically so it fits within the viewport.
+function fitRosterScroll(){
+  const list = $id('studentList');
+  if(!list) return;
+  const rect = list.getBoundingClientRect();
+  const h = Math.max(140, window.innerHeight - rect.top - 16);
+  list.style.maxHeight = h + 'px';
+  list.style.overflowY = 'auto';
+}
+window.addEventListener('resize', fitRosterScroll);
+
+/* ========= Sidebar collapse ========= */
+// Collapses or expands the left sidebar and updates the toggle button icon and title.
+function toggleSidebar(){
+  const sidebar = document.getElementById("sidebar");
+  const btn = document.getElementById("sidebarToggle");
+  const collapsed = sidebar.classList.toggle("collapsed");
+
+  if (collapsed) {
+    btn.textContent = "→";
+    btn.title = "Expand sidebar";
+  } else {
+    btn.textContent = "←";
+    btn.title = "Collapse sidebar";
+  }
+}
+
+/* ========= Account dropdown ========= */
+// Initializes account menu behavior
+// - Toggles dropdown on click/keyboard
+// - Loads authenticated user info from /api/me
+// - Updates avatar, name, and small email line
+(function initAccountMenu(){
+  const profile=$id('userProfile');
+  const menu=$id('accountMenu');
+  if(!profile||!menu) return;
+  const toggle=()=>{ const shown=menu.classList.toggle('show'); profile.setAttribute('aria-expanded', shown?'true':'false'); };
+  profile.addEventListener('click',e=>{ e.stopPropagation(); toggle(); });
+  profile.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); toggle(); } });
+  document.addEventListener('click',e=>{ if(!menu.contains(e.target)&&!profile.contains(e.target)){ menu.classList.remove('show'); profile.setAttribute('aria-expanded','false'); } });
+
+  fetch('/api/me').then(r=>r.ok?r.json():{}).then(d=>{
+    if(!d || !d.auth) return;
+    const uname=document.querySelector('.user-name');
+    const uemail=document.querySelector('.user-email');
+    if(uname) uname.textContent=d.name||d.user_id||'Instructor';
+    if(uemail) uemail.textContent=d.email||d.user_id||'';
+    const small=$id('meEmailSmall'); if(small) small.textContent=d.email||d.user_id||'';
+    const a=document.querySelector('.user-avatar');
+    if(a){ a.textContent=(d.name||d.user_id||'I').split(' ').map(x=>x[0]).join('').slice(0,2).toUpperCase(); }
+    refreshMini();
+  }).catch(()=>{});
+})();
+
+// LEGACY: Updates small “Mini” class/assignment lists inside the account dropdown.
+// We decided against this feature, left code for future implementation.
+function refreshMini(){
+  const miniClasses=$id('classListMini');
+  if(miniClasses){
+    fetch('/api/classes').then(r=>r.json()).then(items=>{
+      miniClasses.innerHTML='';
+      (items||[]).forEach(c=>{
+        const el=document.createElement('div'); el.className='am-item';
+        el.innerHTML='<div class="am-grow"><strong>'+ (c.name||c.id) +'</strong><div class="am-muted">'+c.id+'</div></div>';
+        miniClasses.appendChild(el);
+      });
+    }).catch(()=>{});
+  }
+  const miniAsn=$id('asnListMini');
+  if(miniAsn){
+    fetch('/api/instructor/active_assignments').then(r=>r.json()).then(items=>{
+      miniAsn.innerHTML='';
+      (items||[]).forEach(a=>{
+        const el=document.createElement('div'); el.className='am-item';
+        el.innerHTML='<div class="am-grow"><strong>'+a.title+'</strong> <span class="am-muted">('+(a.class_name||a.class_id)+')</span></div>';
+        miniAsn.appendChild(el);
+      });
+    }).catch(()=>{});
+  }
+}
+
+/* ========= Resizable split (Roster | Assignments) ========= */
+// Creates a draggable vertical splitter between the Roster and Assignments panels.
+(function initSplit(){
+  const wrap = $id('rosterAssignSplit');
+  const left = $id('rosterSection');
+  const right = $id('assignSection');
+  if (!wrap || !left || !right) return;
+
+  const key = 'split:rosterAssign';
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem(key) || 'null'); } catch {}
+  let l0 = Number(saved?.l), r0 = Number(saved?.r);
+
+  const notNum = (x) => !isFinite(x);
+  const badSum = (l0 + r0 < 95) || (l0 + r0 > 105);
+  const tooSmall = (l0 <= 10) || (r0 <= 10);
+
+  if (notNum(l0) || notNum(r0) || badSum || tooSmall) {
+    l0 = 50; r0 = 50;
+  }
+
+  left.style.flex  = `0 0 ${l0}%`;
+  right.style.flex = `0 0 ${r0}%`;
+
+  const handle = document.createElement('div');
+  handle.className = 'lt-handle';
+  wrap.insertBefore(handle, right);
+
+  let dragging=false, startX=0, startL=0, startR=0;
+  function startDrag(x){
+    dragging = true;
+    startX = x;
+    startL = left.getBoundingClientRect().width;
+    startR = right.getBoundingClientRect().width;
+    document.body.classList.add('lt-dragging','resizing');
+  }
+  function moveDrag(x){
+    if (!dragging) return;
+    const dx = x - startX;
+    const total = Math.max(1, startL + startR);
+    let l = ((startL + dx) * 100) / total;
+    let r = 100 - l;
+    const MIN = 20;
+    if (l < MIN) { l = MIN; r = 100 - MIN; }
+    if (r < MIN) { r = MIN; l = 100 - MIN; }
+    left.style.flex  = `0 0 ${l}%`;
+    right.style.flex = `0 0 ${r}%`;
+    localStorage.setItem(key, JSON.stringify({ l: Math.round(l), r: Math.round(r) }));
+  }
+  function endDrag(){ dragging=false; document.body.classList.remove('lt-dragging','resizing'); }
+
+  handle.addEventListener('mousedown', e => { e.preventDefault(); startDrag(e.clientX); });
+  window.addEventListener('mousemove', e => { if (dragging){ e.preventDefault(); moveDrag(e.clientX); } }, { passive:false });
+  window.addEventListener('mouseup', endDrag);
+
+  handle.addEventListener('touchstart', e => { const t=e.touches?.[0]; if(t){ e.preventDefault(); startDrag(t.clientX); } }, { passive:false });
+  window.addEventListener('touchmove', e => { const t=e.touches?.[0]; if (dragging && t){ e.preventDefault(); moveDrag(t.clientX); } }, { passive:false });
+  window.addEventListener('touchend', endDrag, { passive:true });
+})();
+
+
+/* ========= Create/select class ========= */
+// Wires up the inline class creation panel in the sidebar:
+(function wireClassCreateUI(){
+  const addBtn = $id('addClassBtn');
+  const panel  = $id('classCreatePanel');
+  const okBtn  = $id('classCreateOk');
+  if (addBtn && panel) {
+    addBtn.addEventListener('click', () => {
+      panel.style.display = (panel.style.display === 'none' || !panel.style.display) ? 'block' : 'none';
+      if (panel.style.display === 'block') $id('clsName')?.focus();
+      fitRosterScroll();
+    });
+  }
+  if (okBtn) okBtn.addEventListener('click', createClass);
+  ['clsName','clsTerm'].forEach(id=>{
+    const el=$id(id);
+    if(el) el.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); createClass(); } });
+  });
+})();
+
+// Fetches the instructor's class list from /api/classes & renders sidebar
+function loadClasses(){
+  fetch('/api/classes')
+    .then(r=>{ if(!r.ok) throw new Error('Failed to fetch classes'); return r.json(); })
+    .then(items=>{ classesData = items || []; renderClassTabs(); })
+    .catch(err=> console.error('Load classes failed:', err));
+}
+
+// Builds the sidebar class list UI for all classes
+function renderClassTabs(){
+  const list = document.getElementById('classTabList');
+  if (!list) return;
+  list.innerHTML = '';
+
+  if (!classesData.length){
+    list.innerHTML = '<div class="card muted" style="margin:10px;">No classes yet. Click + to create one.</div>';
+    initClassContextMenu();
+    return;
+  }
+
+  classesData.forEach(c=>{
+    const item = document.createElement('div');
+    item.className = 'card item' + (c.id === currentClassId ? ' active' : '');
+    item.dataset.id = c.id;
+    item.dataset.name = c.name || '';
+    item.setAttribute('data-card', 'class');
+    item.style.cursor = 'pointer';
+    item.addEventListener('click', () => selectClass(c.id, c.name));
+
+    const icon = document.createElement('div');
+    icon.className = 'project-icon';
+    icon.style.cssText='width:28px;height:28px;border-radius:8px;background:#e8f5e9;color:#2d5a45;font-weight:700;display:flex;align-items:center;justify-content:center;';
+    const initials = (c.name || 'CL').split(/\s+/).map(s=>s[0]||'').join('').slice(0,3).toUpperCase();
+    icon.textContent = initials;
+
+    const info = document.createElement('div');
+    info.className = 'project-info';
+    info.style.flex='1';
+    const name = document.createElement('div'); name.className = 'project-name'; name.textContent = c.name || 'Untitled Class';
+    const meta = document.createElement('div'); meta.className = 'project-meta'; meta.textContent = c.term || ''; meta.style.color='#6b7280'; meta.style.fontSize='12px';
+
+    info.appendChild(name);
+    info.appendChild(meta);
+    item.style.display='flex'; item.style.gap='10px'; item.style.alignItems='center';
+    item.appendChild(icon);
+    item.appendChild(info);
+    list.appendChild(item);
+  });
+
+  initClassContextMenu();
+}
+
+
+// ===== Right-click menu for classes =====
+// Enables a custom right-click context menu with Rename and Delete actions on class items.
+let contextMenuClassId = null;
+function initClassContextMenu(){
+  const list = document.getElementById('classTabList');
+  const menu = document.getElementById('classContextMenu');
+  if (!list || !menu) return;
+
+  if (list.dataset.ctxBound === '1') return;
+  list.dataset.ctxBound = '1';
+
+  const hide = () => { menu.style.display = 'none'; };
+
+  list.addEventListener('contextmenu', function(e){
+    const card = e.target.closest('[data-id]');
+    if (!card || !list.contains(card)) return;
+
+    e.preventDefault();
+    contextMenuClassId = card.dataset.id;
+
+    menu.style.display = 'block';
+    menu.style.visibility = 'hidden';
+
+    const mw = menu.offsetWidth || 180;
+    const mh = menu.offsetHeight || 90;
+    const pageX = (e.pageX ?? (e.clientX + window.scrollX));
+    const pageY = (e.pageY ?? (e.clientY + window.scrollY));
+    const maxX  = window.scrollX + window.innerWidth  - mw - 8;
+    const maxY  = window.scrollY + window.innerHeight - mh - 8;
+
+    menu.style.left = Math.max(window.scrollX + 8, Math.min(pageX, maxX)) + 'px';
+    menu.style.top  = Math.max(window.scrollY + 8, Math.min(pageY, maxY)) + 'px';
+    menu.style.visibility = 'visible';
+  }, { capture: true });
+
+  document.addEventListener('click', (e) => { if (!menu.contains(e.target)) hide(); });
+  window.addEventListener('scroll', hide, true);
+  window.addEventListener('resize', hide);
+  document.addEventListener('keydown', (e)=> { if (e.key === 'Escape') hide(); });
+
+  // if user right-clicks elsewhere, hide
+  document.addEventListener('contextmenu', (e)=> {
+    if (!e.target.closest('#classTabList')) hide();
+  }, { capture:true });
+}
+
+
+  
+
+// Actions
+// Handles renaming of a class via a simple prompt:
+// - Updates name/term locally and re-renders the class list
+function renameClass(){
+  if (!contextMenuClassId) return;
+  const cls = (classesData || []).find(c => c.id === contextMenuClassId);
+  if (!cls) return;
+
+  // Ask for new name
+  let newName = prompt('Enter new class name:', cls.name || '');
+  if (newName === null) {
+    document.getElementById('classContextMenu').style.display = 'none';
+    return;
+  }
+  newName = newName.trim();
+  if (!newName) {
+    alert('Class name is required.');
+    document.getElementById('classContextMenu').style.display = 'none';
+    return;
+  }
+
+  // Ask for new term (optional)
+  let newTerm = prompt('Enter term (e.g., Fall 2025):', cls.term || '');
+  if (newTerm === null) {
+    document.getElementById('classContextMenu').style.display = 'none';
+    return;
+  }
+  newTerm = newTerm.trim();
+
+  // Optimistic UI update
+  cls.name = newName;
+  cls.term = newTerm;
+  renderClassTabs();
+  if (currentClassId === cls.id) {
+    // update headers if this class is selected
+    $id('rosterClassHint') && ($id('rosterClassHint').textContent = newName);
+    $id('assignClassHint') && ($id('assignClassHint').textContent = newName);
+  }
+
+  // Persist to server
+  fetch(`/api/classes/${cls.id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: newName, term: newTerm })
+  })
+  .then(r => r.ok ? r.json() : Promise.reject())
+  .catch(() => {
+    console.warn('PATCH /api/classes/:id not available; keeping local rename.');
+  });
+
+  document.getElementById('classContextMenu').style.display = 'none';
+}
+
+// Deletes a class after confirmation & refreshes the class list
+function deleteClass(){
+  if (!contextMenuClassId) return;
+  const cls = (classesData || []).find(c => c.id === contextMenuClassId);
+  if (!cls) return;
+
+  if (confirm(`Delete "${cls.name}"? This cannot be undone.`)) {
+    fetch(`/api/classes/${cls.id}`, { method: 'DELETE' })
+      .then(r => r.json())
+      .then(res => {
+        if (res.ok) {
+          // Clear the currently selected class if it was deleted
+          if (currentClassId === cls.id) currentClassId = null;
+
+          console.log(`✅ Deleted class "${cls.name}"`);
+          // Re-fetch classes from the backend so UI matches DB
+          loadClasses();
+
+          // Hide any open roster or assignment panels
+          document.getElementById('rosterSection')?.classList.add('hidden');
+          document.getElementById('assignSection')?.classList.add('hidden');
+        } else {
+          alert(res.error || "Could not delete class.");
+        }
+      })
+      .catch(err => {
+        console.error(err);
+        alert("Network or server error deleting class.");
+      })
+      .finally(() => {
+        document.getElementById('classContextMenu').style.display = 'none';
+      });
+  } else {
+    // user canceled
+    document.getElementById('classContextMenu').style.display = 'none';
+  }
+}
+
+
+
+
+
+/* ========= Create/select class ========= */
+// Creates a new class
+function createClass(){
+  const name = ($id('clsName')?.value || '').trim();
+  const term = ($id('clsTerm')?.value || '').trim();
+  if(!name){ alert('Enter a class name'); return; }
+
+  fetch('/api/classes', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({ name, term })
+  })
+  .then(r=>{ if(!r.ok) throw new Error('Create failed: '+r.status); return r.json(); })
+  .then(()=>{
+    $id('clsName').value=''; $id('clsTerm').value='';
+    const panel=$id('classCreatePanel'); if(panel) panel.style.display='none';
+    loadClasses();
+    fitRosterScroll();
+  })
+  .catch(err=>{ console.error(err); alert('Could not create class. Ensure POST /api/classes exists.'); });
+}
+
+
+/* ========= Roster ========= */
+// Loads the student roster for the currently selected class
+function loadRoster(){
+  const root=$id('studentList'); if(!root) return;
+  root.innerHTML='';
+  if(!currentClassId){ root.innerHTML='<div class="muted">No students yet.</div>'; fitRosterScroll(); return; }
+  fetch(`/api/classes/${currentClassId}/students`).then(r=>r.json()).then(items=>{
+    root.innerHTML='';
+    if(!items || !items.length){ root.innerHTML='<div class="muted">No students yet.</div>'; fitRosterScroll(); return; }
+    items.forEach(s=>{
+      const row=document.createElement('div'); row.className='card';
+      row.style.display='grid';
+      row.style.gridTemplateColumns='1fr auto';
+      row.style.alignItems='center';
+      row.innerHTML = `
+        <div><strong>${s.first_name} ${s.last_name}</strong> <span class="muted">(${s.email})</span></div>
+        <div><button class="btn small" onclick="removeStudent('${s.id||''}')">Remove</button></div>
+      `;
+      root.appendChild(row);
+    });
+    fitRosterScroll();
+  }).catch(()=>{ fitRosterScroll(); });
+}
+
+// Adds a new student to the current class
+function addStudent(){
+  if(!currentClassId){ alert('Select a class first'); return; }
+  const first=$id('stFirst').value.trim();
+  const last =$id('stLast').value.trim();
+  const email=$id('stEmail').value.trim();
+  if(!first||!last||!email){ alert('Fill all fields'); return; }
+  if(!isValidEmail(email)){ alert('Please enter a valid email'); $id('stEmail').focus(); return; }
+
+  fetch(`/api/classes/${currentClassId}/students`,{
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({first_name:first,last_name:last,email})
+  })
+  .then(async r=>{
+    if(!r.ok){
+      const d = await r.json().catch(()=>({}));
+      throw new Error(d.error || `HTTP ${r.status}`);
+    }
+    return r.json();
+  })
+  .then(()=>{
+    $id('stFirst').value=''; $id('stLast').value=''; $id('stEmail').value='';
+    loadRoster();
+  })
+  .catch(err=> alert(err.message || 'Could not add student'));
+}
+
+['stFirst','stLast','stEmail'].forEach(id=>{
+  const el = $id(id);
+  if(!el) return;
+  el.addEventListener('keydown', e=>{
+    if(e.key === 'Enter'){
+      e.preventDefault();
+      addStudent();
+    }
+  });
+});
+
+// Removes a student from the current class
+function removeStudent(studentId){
+  if(!currentClassId || !studentId) return;
+  fetch(`/api/classes/${currentClassId}/students/${encodeURIComponent(studentId)}`, { method:'DELETE' })
+    .then(()=> loadRoster())
+    .catch(()=>{});
+}
+
+/* ========= Roster Upload ========= */
+// Sets up drag-and-drop and keyboard-accessible file selection for roster uploads
+function bindRosterDrop(){
+  const drop = $id('rosterDrop');
+  const fileInput = $id('rosterFile');
+  const msg = $id('rosterUploadMsg');
+  if(!drop || !fileInput) return;
+
+  const setMsg = (t)=> { if(msg) msg.textContent = t || ''; };
+
+  ['dragenter','dragover'].forEach(evt=>{
+    drop.addEventListener(evt, e=>{ e.preventDefault(); drop.classList.add('dragover'); });
+  });
+  ['dragleave','drop'].forEach(evt=>{
+    drop.addEventListener(evt, e=>{ e.preventDefault(); drop.classList.remove('dragover'); });
+  });
+
+  drop.addEventListener('drop', e=>{
+    if(!currentClassId){ alert('Select a class first'); return; }
+    const file = e.dataTransfer?.files?.[0];
+    if(file) uploadRoster(file, setMsg);
+  });
+
+  drop.addEventListener('click', ()=>{
+    if(!currentClassId){ alert('Select a class first'); return; }
+    fileInput.click();
+  });
+  drop.addEventListener('keydown', e=>{
+    if(e.key==='Enter' || e.key===' '){
+      e.preventDefault();
+      if(!currentClassId){ alert('Select a class first'); return; }
+      fileInput.click();
+    }
+  });
+
+  fileInput.addEventListener('change', ()=>{
+    const f = fileInput.files?.[0];
+    if(!f) return;
+    if(!currentClassId){ alert('Select a class first'); fileInput.value=''; return; }
+    uploadRoster(f, setMsg);
+    fileInput.value = '';
+  });
+}
+
+// Uploads a CSV/XLSX roster file to the backend
+async function uploadRoster(file, setMsg){
+  const say = (m)=> setMsg && setMsg(m);
+
+  try{
+    say('Uploading…');
+
+    const tryUpload = async (url, fd) => {
+      const res = await fetch(url, { method:'POST', body: fd });
+      const ctype = res.headers.get('content-type') || '';
+      if (!ctype.includes('application/json')) {
+        const txt = await res.text();
+        return { ok:false, __status:res.status, error:`Non-JSON ${res.status}. ${txt.slice(0,200)}` };
+      }
+      const data = await res.json();
+      data.__status = res.status;
+      return data;
+    };
+
+    const fd1 = new FormData(); fd1.append('file', file);
+    let data = await tryUpload(`/api/classes/${currentClassId}/students/upload`, fd1);
+
+    if (data.__status === 404) {
+      const fd2 = new FormData(); fd2.append('file', file); fd2.append('project_id', currentClassId);
+      data = await tryUpload('/instructor/roster/upload', fd2);
+    }
+
+    if (!data.ok) {
+      say(data.error || `Upload failed (${data.__status||'?'})`);
+      console.error('[Roster upload error]', data);
+      return;
+    }
+
+    const parts = [];
+    if('added' in data)   parts.push(`Added ${data.added}`);
+    if('updated' in data) parts.push(`Updated ${data.updated}`);
+    if('skipped' in data) parts.push(`Skipped ${data.skipped}`);
+    say(parts.length ? parts.join(' • ') : 'Upload complete');
+
+    loadRoster();
+  } catch (err) {
+    console.error(err);
+    say('Upload failed');
+  }
+}
+
+
+
+/* ========= Init ========= */
+// Initial setup for the instructor dashboard
+window.addEventListener("load", () => {
+  loadClasses();
+  bindRosterDrop();
+  fitRosterScroll();
+  initClassContextMenu();
+
+  const titleInput = $id("newAsnTitle");
+  if (titleInput) {
+    titleInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        createAssignment();
+      }
+    });
+  }
+});
+
+
+
+let instructorAssignments = [];
+let currentAsnId = null;
+let activeTitleSet = new Set();
+
+// Fetches assignments for the given (or current) class
+async function loadInstructorAssignments(classId){
+  const cls = classId || currentClassId || "";
+  const url = cls
+    ? `/api/instructor/assignments?class_id=${encodeURIComponent(cls)}`
+    : `/api/instructor/assignments`;
+  try {
+    const items = await fetch(url).then(r=>r.json());
+    instructorAssignments = items || [];
+
+    const actives = await fetch('/api/student/active_assignments').then(r=>r.json());
+    activeTitleSet = new Set((actives||[]).map(a => a.title));
+
+    renderAssignments();
+  } catch(e) {
+    console.error(e);
+  }
+}
+
+// Renders the assignment list for the current class
+function renderAssignments(){
+  const list = document.getElementById("assignmentList");
+  list.innerHTML = "";
+  if (!instructorAssignments.length){
+    list.innerHTML = '<div class="empty">No assignments yet. Create one above.</div>';
+    return;
+  }
+
+  instructorAssignments.forEach(a=>{
+    const isActive = activeTitleSet.has(a.title);
+    const div = document.createElement("div");
+    div.className = "item" + (a.id === currentAsnId ? " active" : "");
+    div.style.cursor = "pointer";
+    div.onclick = () => selectAssignment(a.id);
+
+    div.innerHTML = `
+      <div class="grow">
+        <div class="title">${escapeHtml(a.title)}</div>
+      </div>
+      <div class="actions" onclick="event.stopPropagation()">
+        <label class="toggle" title="Activate for students">
+          <input type="checkbox" ${isActive ? "checked" : ""} onchange="toggleAssignmentActive('${a.id}', this.checked)" />
+          <span>Active</span>
+        </label>
+        <button class="btn" onclick="openAssignmentInstructor('${a.id}')">Open</button>
+      </div>
+    `;
+    list.appendChild(div);
+  });
+}
+
+// Marks an assignment as selected, reveals its Files card, and loads attached files
+function selectAssignment(asnId, title){
+  currentAsnId = asnId;
+  renderAssignments();
+
+  const card  = document.getElementById("asnFilesCard");
+  const titleEl = document.getElementById("asnFilesTitle");
+  if (card) card.style.display = "block";
+  if (titleEl) titleEl.textContent = `Files — ${title || ""}`;
+
+  refreshAssignmentFiles();
+}
+
+// Convenience helper: selects the assignment and scrolls the Files card into view
+function openAssignmentInstructor(asnId){
+  const asn = instructorAssignments.find(x => x.id === asnId);
+  selectAssignment(asnId, asn?.title || '');
+  $id('asnFilesCard')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// Loads and displays all files attached to the currently selected assignment
+function refreshAssignmentFiles(){
+  const card = document.getElementById("asnFilesCard");
+  const box  = document.getElementById("asnFilesList");
+  if (!card || !box) return;
+
+  if (!currentAsnId){
+    card.style.display = "none";
+    return;
+  }
+
+  fetch(`/api/instructor/assignment_files?assignment_id=${encodeURIComponent(currentAsnId)}`)
+    .then(r => r.json())
+    .then(files => {
+      box.innerHTML = "";
+      if (!files || !files.length){
+        box.innerHTML = '<div class="empty">No files yet for this assignment.</div>';
+        return;
+      }
+      files.forEach(f=>{
+        const row = document.createElement("div");
+        row.className = "item";
+        const size = f.size ? ` • ${f.size} bytes` : '';
+        row.innerHTML = `
+          <div class="grow">
+            <div class="title">${escapeHtml(f.name)}</div>
+            <div class="meta">${escapeHtml(f.mimetype || '')}${size}</div>
+          </div>
+        `;
+        box.appendChild(row);
+      });
+    })
+    .catch(err => {
+      console.error(err);
+      box.innerHTML = '<div class="empty">Could not load files.</div>';
+    });
+}
+
+// Creates a new assignment tied to the currently selected class
+async function createAssignment(){
+  const title = ($id('newAsnTitle')?.value || "").trim();
+  const msg   = $id('newAsnMsg');
+  if (msg) msg.textContent = "";
+
+  if (!title){
+    if (msg) msg.textContent = "Please enter a title.";
+    return;
+  }
+  if (!currentClassId){
+    if (msg) msg.textContent = "Select a class first.";
+    return;
+  }
+
+  try{
+    const res = await fetch('/api/instructor/assignments', {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json' },
+      body: JSON.stringify({ class_id: currentClassId, title })
+    });
+
+    const data = await res.json().catch(()=> ({}));
+    if (!res.ok || data.error){
+      throw new Error(data.error || `Failed to create assignment (HTTP ${res.status})`);
+    }
+
+    // success UI updates
+    $id('newAsnTitle').value = "";
+    if (typeof loadInstructorAssignments === "function") {
+      await loadInstructorAssignments();    // refresh list
+    }
+    if (msg) msg.textContent = "Assignment created.";
+  } catch (err){
+    if (msg) msg.textContent = err.message || "Failed to create assignment.";
+  }
+}
+
+
+// Hook the existing dropzone to upload into the selected assignment
+// Connects the bottom assignment dropzone and hidden file input to upload files for the selected assignment.
+(function wireAsnUpload(){
+  const input = document.getElementById("assignFiles");
+  const dz = document.getElementById("assignDrop");
+  if (!input || !dz) return;
+
+  function doUpload(fileList){
+    if (!currentAsnId){ showNotification("Select an assignment first.", true); return; }
+    const fd = new FormData();
+    Array.from(fileList || []).forEach(f => fd.append("file", f));
+    fd.append("assignment_id", currentAsnId);
+    fetch("/api/instructor/assignment_upload", { method:"POST", body: fd })
+      .then(r => r.json())
+      .then(res => {
+        if (res.error){ showNotification(res.error, true); return; }
+        showNotification(`Uploaded ${res.uploaded?.length||0} file(s).`);
+        refreshAssignmentFiles();
+      })
+      .catch(e => { console.error(e); showNotification("Upload failed.", true); });
+  }
+
+  input.addEventListener("change", e => doUpload(e.target.files));
+
+  dz.addEventListener("dragover", e => { e.preventDefault(); dz.classList.add("dragover"); });
+  dz.addEventListener("dragleave", () => dz.classList.remove("dragover"));
+  dz.addEventListener("drop", e => {
+    e.preventDefault(); dz.classList.remove("dragover");
+    doUpload(e.dataTransfer.files);
+  });
+})();
+
+  // Ensures instructor assignments are loaded once the DOM is fully parsed
+  document.addEventListener("DOMContentLoaded", loadInstructorAssignments);
+
+  // Minimal HTML escaping helper to safely render dynamic text
+  function escapeHtml(s){
+    return (s || "").replace(/[&<>"']/g, c => ({
+      "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"
+    })[c]);
+  }
+
+  // ==== Active Class Tracking ====
+  // LEGACY: Loading overlay helpers
+  const overlay = document.getElementById('loadingOverlay');
+  function showLoading(){ overlay && overlay.classList.add('show'); }
+  function hideLoading(){ overlay && overlay.classList.remove('show'); }
+
+
+  // Initializes dynamic tooltips for elements with the .tip class
+  document.addEventListener('DOMContentLoaded', () => {
+    // create one floating tooltip
+    let tipEl = document.getElementById('uiTip');
+    if (!tipEl) {
+      tipEl = document.createElement('div');
+      tipEl.id = 'uiTip';
+      document.body.appendChild(tipEl);
+    }
+
+    const clamp = (v, min, max) => Math.max(min, Math.min(v, max));
+
+    function showFor(host){
+      const src = host.querySelector('.tip-pop');
+      if (!src) return;
+      tipEl.innerHTML = src.innerHTML;
+
+      // measure & place
+      tipEl.classList.add('show');
+      tipEl.style.left = '-9999px';
+      tipEl.style.top  = '-9999px';
+
+      const hb = host.getBoundingClientRect();
+      const bw = tipEl.offsetWidth  || 220;
+      const bh = tipEl.offsetHeight || 40;
+      const m  = 8;
+
+      const x = clamp(hb.left + hb.width/2 - bw/2, m, window.innerWidth - m - bw);
+      const y = clamp(hb.bottom + 8,                m, window.innerHeight - m - bh);
+
+      tipEl.style.left = x + 'px';
+      tipEl.style.top  = y + 'px';
+    }
+
+    function hide(){ tipEl.classList.remove('show'); }
+
+    // bind to all .tip
+    document.querySelectorAll('.tip').forEach(host => {
+      // pointer events (works for mouse & touch)
+      host.addEventListener('pointerenter', () => showFor(host));
+      host.addEventListener('pointerleave', (e) => {
+        // if moving into the tooltip itself, don't hide
+        const to = e.relatedTarget;
+        if (to && tipEl.contains(to)) return;
+        hide();
+      });
+      // keep open when hovering tooltip
+      tipEl.addEventListener('pointerleave', hide);
+      tipEl.addEventListener('pointerenter', () => { /* keep shown */ });
+
+      // keyboard accessibility
+      host.setAttribute('tabindex', host.getAttribute('tabindex') || '0');
+      host.addEventListener('focusin', () => showFor(host));
+      host.addEventListener('focusout', hide);
+    });
+
+    // reposition on scroll/resize so it stays near the "i"
+    window.addEventListener('scroll', () => {
+      const active = document.activeElement?.classList?.contains('tip') ? document.activeElement : null;
+      const hover  = document.querySelector('.tip:hover');
+      const host   = hover || active;
+      if (host && tipEl.classList.contains('show')) showFor(host);
+    }, { passive:true });
+
+    window.addEventListener('resize', () => {
+      const hover = document.querySelector('.tip:hover');
+      if (hover && tipEl.classList.contains('show')) showFor(hover);
+    }, { passive:true });
+  });
+
+
+
+
+
+
+  // Core workflow when an instructor selects a class from the sidebar:
+  // - Updates active class state and hint text
+  // - Reveals roster and assignments panels
+  // - Reloads roster and assignments for the chosen class
+  // - Persists active class to the backend (best-effort)
+  function selectClass(id, name){
+    currentClassId = id;
+
+    const rosterHint  = $id('rosterClassHint');
+    const assignHint  = $id('assignClassHint');
+    const rosterEmpty = $id('rosterEmpty');
+    const rosterBody  = $id('rosterBody');
+
+    if (rosterHint) rosterHint.textContent = name || id;
+    if (assignHint) assignHint.textContent = name || id;
+    if (rosterEmpty && rosterBody){
+      rosterEmpty.style.display = 'none';
+      rosterBody.style.display  = 'block';
+    }
+
+    if (typeof renderClassTabs === 'function') renderClassTabs();
+    if (typeof loadRoster === 'function') loadRoster();
+
+    // Fetch assignments for selected class
+    if (typeof loadInstructorAssignments === 'function') loadInstructorAssignments(id);
+
+    // Instant visual feedback in the panel
+    if (typeof renderAssignments === 'function') renderAssignments();
+
+    if (typeof fitRosterScroll === 'function') fitRosterScroll();
+    if (typeof initClassContextMenu === 'function') initClassContextMenu();
+
+    // Persist “active class” on the server
+    fetch('/api/active_class', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ class_id: id })
+    }).catch(()=>{});
+  }
+
+  // Lightweight toast notification utility for success/error messages
+  function showNotification(msg, isError=false){
+    try {
+      const n = document.createElement('div');
+      n.className = 'notification ' + (isError ? 'error' : 'success');
+      n.textContent = msg || (isError ? 'Error' : 'Done');
+      document.body.appendChild(n);
+      requestAnimationFrame(()=> n.classList.add('show'));
+      setTimeout(()=> {
+        n.classList.remove('show');
+        setTimeout(()=> n.remove(), 400);
+      }, 1800);
+    } catch {
+      alert(msg);
+    }
+  }
+
+  // Marks an assignment as active or inactive for students
+  async function toggleAssignmentActive(assignmentId, makeActive){
+    try{
+      const res = await fetch('/api/instructor/assignments/activate', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ assignment_id: assignmentId, active: !!makeActive })
+      }).then(r=>r.json());
+
+      if (res && res.ok){
+        // Update local state
+        const asn = (window.instructorAssignments||[]).find(x => x.id === assignmentId);
+        if (asn){
+          if (makeActive) activeTitleSet.add(asn.title);
+          else activeTitleSet.delete(asn.title);
+        }
+        // Optional toast
+        if (typeof showNotification === 'function'){
+          showNotification(`${makeActive ? "Activated" : "Deactivated"}: ${asn?.title||"Assignment"}`);
+        }
+      } else {
+        alert(res?.error || "Could not update assignment status.");
+      }
+    }catch(e){
+      console.error(e);
+      alert("Network error toggling assignment.");
+    }
+  }
+
+  // Uploads one or more files directly from the 'Upload to this assignment' file input
+  async function uploadToAssignment(asnId, inputEl) {
+    if (!inputEl || !inputEl.files || inputEl.files.length === 0) {
+      alert("Choose one or more files first."); 
+      return;
+    }
+
+    const fd = new FormData();
+    fd.append("assignment_id", asnId);
+    for (const f of inputEl.files) {
+      fd.append("file", f);
+    }
+
+    const resp = await fetch("/api/instructor/assignment_upload", {
+      method: "POST",
+      body: fd
+    });
+
+    const data = await resp.json();
+    if (!resp.ok) {
+      alert(data.error || "Upload failed");
+      return;
+    }
+
+    // Clear file input and refresh the file list for this assignment
+    inputEl.value = "";
+    if (typeof refreshAssignmentFiles === "function") {
+      refreshAssignmentFiles();
+    }
+  }
+
+
+
+</script>
+
+
+<!-- Context Menu for Classes -->
+<div id="classContextMenu" class="ctx-menu" style="display:none;">
+  <button type="button" class="context-menu-item" onclick="renameClass()">Rename</button>
+  <button type="button" class="context-menu-item" onclick="deleteClass()">Delete</button>
+</div>
+
+<link rel="stylesheet" href="{{ url_for('static', filename='css/driver.css') }}">
+<script src="{{ url_for('static', filename='js/driver.js') }}"></script>
+<script src="{{ url_for('static', filename='js/site-tour.js') }}" defer></script>
+
+
+</body>
+</html>

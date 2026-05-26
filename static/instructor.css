@@ -1,0 +1,228 @@
+/* ──────────────────────────────────────────────────────────────────────────
+                                Instructor Dashboard
+   ────────────────────────────────────────────────────────────────────────── */
+
+:root{
+  --nav-h: 72px;
+  --g: 16px;
+  --handle-w: 14px;
+
+  --card: #ffffff;
+  --muted: #6b7280;
+  --green: #2d5a45;
+  --mint: #98d678;
+  --danger: #dc3545;
+}
+
+html, body { height: 100%; overflow-x: hidden; }
+
+/* Page shell */
+body.instructor-page{
+  margin: 0;
+  background: linear-gradient(135deg, #0d1f1a 0%, #1a3a2e 100%);
+  color:#0f1a14;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* Top bar */
+.instructor-page .navbar{
+  height: var(--nav-h);
+  min-height: var(--nav-h);
+  display:flex; align-items:center; justify-content:space-between;
+  padding: 12px 18px;
+  color:#fff;
+  border-bottom: 3px solid var(--mint);
+  background: #1a3a2e;
+  box-shadow: 0 6px 24px rgba(0,0,0,.25);
+  position: sticky; top: 0; z-index: 100;
+}
+.navbar-left h1{ margin:0 }
+.navbar-subtitle{ font-size:12px; opacity:.9 }
+
+/* ── Main 2-column layout: [Classes] | [Roster+Assignments] */
+.main-layout{
+  display: grid;
+  grid-template-columns: auto minmax(0,1fr);
+  column-gap: var(--g);
+  row-gap: 0;
+  align-items: stretch;
+  padding: var(--g);
+  box-sizing: border-box;
+  height: calc(100vh - var(--nav-h));
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Classes sidebar */
+.instructor-page .sidebar{
+  width: 280px; min-width: 280px;
+  border-radius: 16px;
+  background: var(--card);
+  display:flex; flex-direction:column;
+  min-height: 0;
+  box-sizing: border-box;
+  border-top-left-radius: 16px;
+  border-top-right-radius: 16px;
+  overflow: hidden;
+}
+.sidebar.collapsed { width:60px !important; min-width:60px !important; overflow:hidden; }
+.project-list{ min-height:0; overflow:auto; }
+
+/* Right column wrapper (Roster + Assignments) with right gutter */
+.main-layout > .container{
+  height: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 0 var(--g) 0 0;
+}
+
+/* ── Split container for Roster | Handle | Assignments */
+#rosterAssignSplit.lt-split{
+  padding-right: var(--g);
+  display:flex; align-items:stretch;
+  height:100%; width:100%;
+  gap: 0;
+  min-height:0;
+  box-sizing: border-box;
+}
+
+/* Panels (Roster + Assignments) */
+#rosterSection,
+#assignSection{
+  display:flex;
+  flex-direction:column;
+  flex: 0 0 50%;
+  min-width: 260px;
+  height:100%;
+  overflow:auto;
+  box-sizing:border-box;
+  background: var(--card);
+  border: 1px solid #e7ece8;
+  border-radius:16px;
+  margin:0;
+}
+
+/* Splitter handle with equal space either side so total gap == var(--g) */
+#rosterAssignSplit .lt-handle{
+  position: relative;
+  width: var(--handle-w);
+  min-width: var(--handle-w);
+  margin: 0 8px;
+  cursor: col-resize;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #222 0%, #1b1b1b 100%);
+  border: 1px solid #3a3a3a;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
+}
+#rosterAssignSplit .lt-handle::before{
+  content:"";
+  position:absolute; top:8px; bottom:8px; left:5px; right:5px;
+  border-radius:8px;
+  background:
+    linear-gradient(#98d678,#98d678) left 5px / 2px 100% no-repeat,
+    linear-gradient(#98d678,#98d678) right 5px / 2px 100% no-repeat;
+  opacity:.95;
+}
+#rosterAssignSplit .lt-handle::after{
+  content:"";
+  position:absolute; top:-8px; bottom:-8px; left:-6px; right:-6px;
+}
+#rosterAssignSplit .lt-handle:hover{
+  border-color:#5a5a5a;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 0 0 3px rgba(180,180,180,.15);
+}
+
+#assignSection{
+  overflow: hidden;
+  border-radius: 16px;
+  margin-right: 0;
+  max-width: 100%;
+}
+
+
+body.lt-dragging, body.lt-dragging * { user-select:none !important; cursor:col-resize !important; }
+
+/* Generic card + small util styles used inside panels */
+.card{
+  background: var(--card);
+  border-radius: 16px;
+  border: 1px solid #e7ece8;
+  padding: 14px;
+  will-change: transform, box-shadow;
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+.card:hover{ transform: translateY(-2px); box-shadow: 0 12px 28px rgba(0,0,0,.18); }
+
+.section-header{ display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+.muted{ color:var(--muted); font-size:12px; }
+
+.list{ display:flex; flex-direction:column; gap:10px; min-height:0; }
+.row{ display:grid; gap:8px; align-items:center; }
+.row input{ border:2px solid #e5e7eb; border-radius:10px; padding:10px 12px; width:100%; min-width:0; }
+
+.dropzone{ border:2px dashed #cfe8d6; background:#f8faf9; border-radius:12px; padding:18px; text-align:center; color:#2d5a45; }
+.dropzone.dragover{ background:#eef8f1; border-color:#86c69e; }
+
+/* Roster scrolling helpers */
+#rosterBody{ display:none; flex:1 1 auto; min-height:0; overflow:hidden; }
+#studentList, #assignmentList, #asnFilesCard{ flex:1 1 auto; min-height:0; overflow:auto; }
+
+/* Utility */
+.hidden{ display:none !important; }
+
+
+/* Right-click context menu */
+.ctx-menu{
+  position:fixed;
+  min-width:180px;
+  background:#ffffff;
+  color:#0f1a14;
+  border:1px solid #e7ece8;
+  border-radius:12px;
+  box-shadow:0 18px 36px rgba(0,0,0,.25);
+  padding:6px;
+  z-index: 4000;
+}
+
+.context-menu-item{
+  display:block;
+  width:100%;
+  text-align:left;
+  border:none;
+  background:transparent;
+  padding:10px 12px;
+  border-radius:8px;
+  font: 600 14px/1.2 system-ui, -apple-system, Segoe UI, Roboto, Arial;
+  color:#123327;
+  cursor:pointer;
+}
+.context-menu-item:hover{ background:#f0f7f3; }
+
+/* i badge */
+.tip{
+  display:inline-flex; align-items:center; justify-content:center;
+  width:18px; height:18px; font:700 12px/1 system-ui, -apple-system, Segoe UI, Roboto, Arial;
+  border-radius:50%; background:#e8f5e9; color:#2d5a45; border:1px solid #cfe8d6;
+  cursor:default; position:relative; margin-left:6px; user-select:none;
+  pointer-events:auto; z-index:1;
+}
+/* we no longer position the inner tip-pop; it's just a content holder */
+.tip .tip-pop{ display:none !important; }
+
+/* floating tooltip attached to <body> */
+#uiTip{
+  position:fixed; left:-9999px; top:-9999px;
+  background:#0f1a14; color:#fff; border:1px solid #1f4a39; border-radius:10px;
+  padding:10px 12px; font-size:12px; white-space:nowrap;
+  box-shadow:0 12px 28px rgba(0,0,0,.35);
+  z-index:9999; opacity:0; visibility:hidden;
+  transition:opacity .12s ease, visibility .12s ease;
+}
+#uiTip.show{ opacity:1; visibility:visible; }
+#uiTip::before{
+  content:""; position:absolute; top:-6px; left:50%; transform:translateX(-50%);
+  border-width:6px; border-style:solid;
+  border-color:transparent transparent #0f1a14 transparent;
+}

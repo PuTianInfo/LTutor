@@ -1,0 +1,1325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>AI Tutor - LeafTutor</title>
+
+  <!-- Base site styles (instructor/shared) -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='student.css') }}">
+
+
+  <!-- CodeMirror -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.12/codemirror.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.12/theme/monokai.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.12/theme/dracula.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.12/codemirror.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.12/mode/python/python.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.12/mode/javascript/javascript.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.12/mode/clike/clike.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.12/addon/edit/closebrackets.min.js"></script>
+</head>
+<body class="student-page">
+  <div class="navbar">
+    <div class="navbar-left">
+      <h1>LeafTutor</h1>
+      <div class="navbar-subtitle">Your AI-Powered Coding Assistant</div>
+    </div>
+    <div class="navbar-right">
+      <button id="student-tour-trigger" class="btn">Show Tour</button>
+      <div class="user-profile" id="userProfile" tabindex="0" role="button" aria-haspopup="true" aria-expanded="false">
+        <div class="user-avatar">JD</div>
+        <div class="user-info">
+          <div class="user-name">John Doe</div>
+          <div class="user-email">john.doe@example.com</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Account dropdown -->
+  <div id="accountMenu" class="account-menu" aria-hidden="true">
+    <div class="am-head">
+      <div class="am-title">My Account</div>
+    </div>
+    <!-- Logout -->
+    <div class="am-footer">
+      <a class="am-logout" href="/logout">Log out</a>
+    </div>
+  </div>
+
+  <div class="container">
+    <!-- Left Sidebar -->
+    <div class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <h3>Projects</h3>
+        <div class="sidebar-controls">
+          <button onclick="addProject()" class="add-project-btn" title="Add new project">+</button>
+          <button onclick="toggleSidebar()" class="collapse-btn" id="sidebarToggle" title="Collapse sidebar">←</button>
+        </div>
+
+      </div>
+      <div class="project-list" id="projectList">
+        <!-- Projects will be populated by JavaScript from API -->
+      </div>
+    </div>
+
+<!-- Unified Chat + Editor Split Layout -->
+<div id="chatEditorSplit" class="lt-split" role="group" aria-label="Chat and Editor">
+
+  <!-- Chat Section -->
+  <section class="chat" id="chatSection" role="region" aria-label="Chat interface">
+    <div class="section-header">
+      <h2>Chat</h2>
+      <div class="section-controls">
+        <button onclick="clearChat()" class="clear-btn" aria-label="Clear chat history" title="Clear chat">
+          <span>Clear</span>
+        </button>
+        <button onclick="toggleSection('chat')" class="collapse-btn" id="chatToggle" title="Collapse chat">−</button>
+      </div>
+    </div>
+    <div class="section-content" id="chatContent">
+      <div id="messages" role="log" aria-live="polite" aria-atomic="false"></div>
+      <div class="input-row">
+        <button onclick="triggerFileUpload()" class="upload-inline-btn" aria-label="Upload file" title="Add files">+</button>
+        <input 
+          type="text" 
+          id="userInput" 
+          placeholder="Type your question... (Press Enter to send)" 
+          aria-label="Chat message input"
+          onkeypress="handleKeyPress(event)"
+        />
+        <button onclick="sendMessage()" aria-label="Send message">
+          <span class="btn-text">Send</span>
+          <span class="btn-icon">→</span>
+        </button>
+      </div>
+      <!-- Hidden file input -->
+      <input type="file" id="fileInput" style="display:none;" aria-label="Select file to upload" accept=".txt,.csv,.pdf,.doc,.docx,.py,.js,.java,.cpp,.zip,.ppt,.pptx" onchange="uploadFile()" />
+      <div id="uploadStatus" role="status" aria-live="polite" style="margin-top: 8px; font-size: 13px;"></div>
+    </div>
+  </section>
+
+  <!-- Splitter handle -->
+  <div id="splitterCE" class="splitter" tabindex="0"
+       role="separator" aria-orientation="vertical"
+       aria-valuemin="20" aria-valuemax="80" aria-valuenow="50"
+       aria-label="Resize chat and editor panels">
+  </div>
+
+  <!-- Code Editor Section -->
+  <section class="editor" id="editorSection" role="region" aria-label="Code editor">
+    <div class="editor-header">
+      <h2>Code Editor</h2>
+      <div class="editor-controls">
+        <label for="languageSelect">Language:</label>
+        <select id="languageSelect" onchange="changeLanguage()" aria-label="Select programming language">
+          <option value="python">Python</option>
+          <option value="java">Java</option>
+          <option value="cpp">C++</option>
+        </select>
+
+        <label for="themeSelect">Theme:</label>
+        <select id="themeSelect" onchange="changeTheme()" aria-label="Select editor theme">
+          <option value="default">Default</option>
+          <option value="monokai">Monokai</option>
+          <option value="dracula">Dracula</option>
+        </select>
+
+        <label for="fileSelect">Files:</label>
+        <select id="fileSelect" aria-label="Select file path">
+          <option value="">Path</option>
+        </select>
+
+        <button onclick="downloadCode()" class="add-project-btn download-btn" aria-label="Download code" title="Download current code">
+          Download
+        </button>
+      </div>
+    </div>
+
+    <div class="section-content" id="editorContent">
+      <textarea id="code" aria-label="Code editor textarea"></textarea>
+      <button onclick="runCode()" class="run-btn" aria-label="Run code">
+        <span class="btn-text">&#9654; Run Code</span>
+      </button>
+      <div class="output-header">Output:</div>
+      <pre id="output" role="region" aria-label="Code output" aria-live="polite"></pre>
+    </div>
+  </section>
+
+</div><!-- /#chatEditorSplit -->
+</div><!-- /.container -->
+
+
+  
+  <!-- Loading Overlay -->
+  <div id="loadingOverlay" class="loading-overlay">
+    <div class="spinner"></div>
+  </div>
+
+  <!-- Context Menu for Projects (Right-click) -->
+  <div id="projectContextMenu" class="context-menu" style="display: none;">
+    <button onclick="renameProject()" class="context-menu-item">Rename</button>
+    <button onclick="deleteProject()" class="context-menu-item">Delete</button>
+    <button onclick="archiveProject()" class="context-menu-item">Archive</button>
+  </div>
+
+  <script>
+    // Loading overlay helpers: show and hide the full-page spinner during background operations
+    const overlay = document.getElementById('loadingOverlay');
+    function showLoading(){ if (overlay) overlay.classList.add('show'); }
+    function hideLoading(){ if (overlay) overlay.classList.remove('show'); }
+
+    // Timeout helpers: automatically hide the loading overlay after a safety timeout to avoid it getting stuck
+    let loadingTimeout = null;
+    function showLoadingWithTimeout() {
+      showLoading();
+      if (loadingTimeout) clearTimeout(loadingTimeout);
+      loadingTimeout = setTimeout(() => { hideLoading(); loadingTimeout = null; }, 45000);
+    }
+    function hideLoadingAndClearTimeout() {
+      if (loadingTimeout) { clearTimeout(loadingTimeout); loadingTimeout = null; }
+      hideLoading();
+    }
+      window.addEventListener('error', (e) => {
+      console.error("[window.onerror]", e.message, e.filename, e.lineno, e.colno, e.error);
+    });
+
+  // Global error logging: catches uncaught errors and logs them to the console for debugging
+  window.addEventListener('unhandledrejection', (e) => {
+    console.error("[unhandledrejection]", e.reason);
+  });
+
+    // Utility: validate whether a value matches the UUID v4/5 format
+    function isUUID(v){
+      return typeof v === "string" && /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(v);
+    }
+
+    // Project and chat management
+    var projects = []; // Will be loaded from API
+    var currentProjectId = null;
+    var contextMenuProjectId = null; // Track which project was right-clicked
+
+    // Initialize CodeMirror editor
+    var editor = CodeMirror.fromTextArea(document.getElementById("code"), {
+      mode: "python",
+      lineNumbers: true,
+      theme: "default",
+      indentUnit: 4,
+      lineWrapping: true,
+      autoCloseBrackets: true
+    });
+
+    function guessFilenameForLanguage(){
+      const val = (document.getElementById("languageSelect")?.value || "python").toLowerCase();
+      if (val.includes("java")) return "Main.java";
+      if (val.includes("c++") || val.includes("cpp")) return "main.cpp";
+      return "main.py";
+    }
+
+    function currentFilename(){
+      return guessFilenameForLanguage(); // "main.py" | "Main.java" | "main.cpp"
+    }
+
+
+    function modeFromLang(lang){
+      return ({python:"python", java:"text/x-java", cpp:"text/x-c++src"})[lang] || "python";
+    }
+
+
+    // --- Autosave on edit (debounced) ---
+    let _saveTimer;
+    editor.on("change", () => {
+      clearTimeout(_saveTimer);
+      _saveTimer = setTimeout(saveEditorState, 800);
+    });
+
+    // Persist the current editor state for the active project/assignment
+    async function saveEditorState(){
+      const proj = projects.find(p => p.id === currentProjectId);
+      if (!proj) return;
+      const body = {
+        assignment_id: proj.assignment_id,
+        filename: guessFilenameForLanguage(),
+        language: (document.getElementById("languageSelect")?.value || "python").toLowerCase(),
+        content: editor.getValue(),
+        cursor: editor.getDoc().getCursor(),
+        scroll: { top: editor.getScrollInfo().top }
+      };
+      await fetch("/api/editor/state", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      });
+    }
+
+    window.addEventListener("beforeunload", saveEditorState);
+
+    // Restore editor content, language, cursor position, and scroll for the active project from the backend
+    async function loadEditorState(){
+      const proj = projects.find(p => p.id === currentProjectId);
+      if (!proj) return;
+      const fn = guessFilenameForLanguage();
+      const r = await fetch(`/api/editor/state?assignment_id=${encodeURIComponent(proj.assignment_id)}&filename=${encodeURIComponent(fn)}`);
+      const d = await r.json();
+      editor.setOption("mode", modeFromLang(d.language || "python"));
+      editor.setValue(d.content || "");
+      if (d.cursor) editor.getDoc().setCursor(d.cursor);
+      if (d.scroll && typeof d.scroll.top === "number") editor.scrollTo(null, d.scroll.top);
+    }
+
+
+    // Initialize projects/assignments on load
+    function initializeProjects() {
+      loadProjectsFromAPI();
+    }
+
+    // Fetch the list of active assignments for the student
+    function loadProjectsFromAPI() {
+      fetch('/api/student/active_assignments')
+        .then(r => r.json())
+        .then(assignments => {
+          projects = assignments.map(a => ({
+            id: a.id,
+            name: a.title,
+            chatHistory: [],
+            sessionActive: false,
+            assignment_id: a.id,
+            outputsByFile: {}
+          }));
+
+          // If no projects from API, show empty state
+          if (projects.length === 0) {
+            projects = [];
+          }
+
+          renderProjects();
+
+          // Auto-select first project if available
+          if (projects.length > 0 && !currentProjectId) {
+            switchProject(projects[0].id);
+          }
+
+          // After render/auto-select, pull current file list once
+          // (only if no projects were auto-selected)
+          if (projects.length === 0) {
+            setTimeout(() => refreshFiles?.(), 600);
+          }
+        })
+        .catch(err => {
+          console.error('Failed to load projects:', err);
+          projects = [];
+          renderProjects();
+        });
+    }
+
+
+    // Render the sidebar project list, including active highlighting and message counts
+    function renderProjects() {
+      var projectList = document.getElementById("projectList");
+      projectList.innerHTML = "";
+      
+      if (projects.length === 0) {
+        projectList.innerHTML = '<div class="empty-state">No assignments yet. Check back later or join a class from your account menu.</div>';
+        return;
+      }
+      
+      projects.forEach(function(project) {
+        var projectItem = document.createElement("div");
+        projectItem.className = "project-item" + (project.id === currentProjectId ? " active" : "");
+        projectItem.onclick = function() { switchProject(project.id); };
+
+        
+        
+        // Right-click context menu
+        projectItem.oncontextmenu = function(e) {
+          e.preventDefault();
+          showProjectContextMenu(e, project.id);
+        };
+        
+        var projectIcon = document.createElement("div");
+        projectIcon.className = "project-icon";
+        projectIcon.textContent = (project.name || "P").substring(0, 2).toUpperCase();
+        
+        var projectInfo = document.createElement("div");
+        projectInfo.className = "project-info";
+        
+        var projectName = document.createElement("div");
+        projectName.className = "project-name";
+        projectName.textContent = project.name;
+        
+        var projectMeta = document.createElement("div");
+        projectMeta.className = "project-meta";
+        projectMeta.textContent = project.chatHistory.length + " messages";
+        
+        projectInfo.appendChild(projectName);
+        projectInfo.appendChild(projectMeta);
+        projectItem.appendChild(projectIcon);
+        projectItem.appendChild(projectInfo);
+        projectList.appendChild(projectItem);
+      });
+    }
+
+    // Show the right-click context menu for a project/assignment
+    function showProjectContextMenu(event, projectId) {
+      var menu = document.getElementById("projectContextMenu");
+      contextMenuProjectId = projectId;
+      
+      menu.style.display = "block";
+      menu.style.left = event.pageX + "px";
+      menu.style.top = event.pageY + "px";
+      
+      // Close menu when clicking elsewhere
+      setTimeout(function() {
+        document.addEventListener('click', closeContextMenu);
+      }, 10);
+    }
+
+    function closeContextMenu() {
+      var menu = document.getElementById("projectContextMenu");
+      menu.style.display = "none";
+      document.removeEventListener('click', closeContextMenu);
+    }
+
+    // Context menu actions
+    // Rename action
+    function renameProject() {
+      if (!contextMenuProjectId) return;
+      var project = projects.find(p => p.id === contextMenuProjectId);
+      if (!project) return;
+      
+      var newName = prompt("Enter new project name:", project.name);
+      if (newName && newName.trim()) {
+        project.name = newName.trim();
+        renderProjects();
+        showNotification("Project renamed!");
+      }
+      closeContextMenu();
+    }
+
+    // Delete action
+    function deleteProject() {
+      if (!contextMenuProjectId) return;
+      var project = projects.find(p => p.id === contextMenuProjectId);
+      if (!project) return;
+      
+      if (confirm(`Delete "${project.name}"? This cannot be undone.`)) {
+        projects = projects.filter(p => p.id !== contextMenuProjectId);
+        if (currentProjectId === contextMenuProjectId) {
+          currentProjectId = projects.length > 0 ? projects[0].id : null;
+          if (currentProjectId) {
+            switchProject(currentProjectId);
+          }
+        }
+        renderProjects();
+        showNotification("Project deleted!");
+      }
+      closeContextMenu();
+    }
+
+    // LEGACY: Context menu action: placeholder for future archive behavior
+    function archiveProject() {
+      if (!contextMenuProjectId) return;
+      var project = projects.find(p => p.id === contextMenuProjectId);
+      if (!project) return;
+
+      showNotification(`"${project.name}" archived! (Feature coming soon)`);
+      closeContextMenu();
+    }
+
+    // Core flow when switching between projects/assignments:
+    // - Save current chat
+    // - Start/ensure a session for the new project
+    // - Restore editor state and output
+    // - Load chat history and refresh sidebar.
+    async function switchProject(projectId) {
+      console.log("[switchProject] ->", projectId);
+      saveCurrentChatHistory();
+
+      currentProjectId = projectId;
+
+      try {
+        console.log("[switchProject] starting session…");
+        await startStudentSession();
+        console.log("[switchProject] session ready:", projects.find(p=>p.id===projectId)?.session_id);
+      } catch (e) {
+        console.warn("[switchProject] startSession error:", e);
+      }
+
+      await loadEditorState();
+
+      const proj = projects.find(p => p.id === currentProjectId);
+      const fn = currentFilename();
+      const key = `lt_out_${proj.assignment_id}__${fn}`;
+      const savedOut = proj?.outputsByFile?.[fn] || "";
+      showOutput(savedOut);
+
+      console.log("[switchProject] loading chat…");
+      await loadChatHistory();
+      console.log("[switchProject] chat loaded");
+
+      renderProjects();
+      setTimeout(() => { if (typeof refreshFiles === "function") refreshFiles(); }, 250);
+    }
+
+
+
+    // Start a backend session for the active project so chat and code runs are tied to a session_id
+    async function startStudentSession() {
+      const project = projects.find(p => p.id === currentProjectId);
+      if (!project) return null;
+
+      const payload = { assignment_id: project.assignment_id };
+      console.log("[startStudentSession] sending ->", payload);
+
+      const r = await fetch("/start_session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      let data = null;
+      try { data = await r.json(); } catch {}
+
+      if (!r.ok) {
+        console.error("[startStudentSession] server 4xx/5xx:", r.status, data || "(no body)");
+        throw new Error((data && data.error) || "Failed to start session");
+      }
+
+      if (data && data.session_id) {
+        project.session_id = data.session_id;
+        project.sessionActive = true;
+        console.log("[startStudentSession] session_id =", project.session_id);
+        return project.session_id;
+      }
+
+      console.warn("[startStudentSession] no session_id in response:", data);
+      return null;
+    }
+
+
+
+    // Save current chat history to project/assignment
+    function saveCurrentChatHistory() {
+      if (!currentProjectId) return;
+      
+      var messages = document.getElementById("messages");
+      var messageElements = messages.querySelectorAll(".message");
+      var chatHistory = [];
+      
+      messageElements.forEach(function(msg) {
+        var isUser = msg.classList.contains("user");
+        var content = msg.querySelector(".message-content").textContent;
+        chatHistory.push({ isUser: isUser, content: content });
+      });
+      
+      var project = projects.find(function(p) { return p.id === currentProjectId; });
+      if (project) {
+        project.chatHistory = chatHistory;
+      }
+    }
+
+    // Clear all chat messages for the current project both in the DOM and in memory
+    function clearChat(){
+      const el = document.getElementById('messages');
+      if (el) el.innerHTML = '';
+      const p = projects.find(x => x.id === currentProjectId);
+      if (p) p.chatHistory = [];
+    }
+
+    // Load chat history for the current project using session_id; only user/assistant
+    async function loadChatHistory() {
+      const messagesEl = document.getElementById("messages");
+      messagesEl.innerHTML = "";
+
+      const project = projects.find(p => p.id === currentProjectId);
+      if (!project) return;
+
+      if (project.session_id) {
+        try {
+          console.log("[loadChatHistory] fetch /load_messages", project.session_id);
+          const resp = await fetch("/load_messages", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              session_id: project.session_id,
+              assignment_id: project.assignment_id || ""
+            })
+          });
+          const data = await resp.json();
+
+          const ALLOWED = new Set(["user","assistant"]);
+          project.chatHistory = (data.messages || [])
+            .filter(m => ALLOWED.has(m.role))
+            .map(m => ({ isUser: m.role === "user", content: m.content, created_at: m.created_at }));
+        } catch (e) {
+          console.error("Failed to load messages:", e);
+        }
+      } else {
+        console.warn("[loadChatHistory] no session_id on project");
+      }
+
+      (project.chatHistory || []).forEach(msg => {
+        const div = document.createElement("div");
+        div.className = "message " + (msg.isUser ? "user" : "ai");
+        div.innerHTML = "<div class='message-content'>" + escapeHtml(msg.content) + "</div>";
+        messagesEl.appendChild(div);
+      });
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+
+      renderProjects();
+    }
+
+
+    // Add new project (placeholder)
+    function addProject() {
+      var projectName = prompt("Enter project name:");
+      if (projectName && projectName.trim() !== "") {
+        var newId = "proj_" + Date.now();
+        projects.push({
+          id: newId,
+          name: projectName,
+          chatHistory: [],
+          sessionActive: false
+        });
+        renderProjects();
+        showNotification("Project added! (Note: This won't persist after refresh)");
+      }
+    }
+
+    // Collapse or expand the left Projects sidebar and refresh the editor layout accordingly
+    function toggleSidebar(){
+      const sidebar = document.getElementById("sidebar");
+      const btn = document.getElementById("sidebarToggle");
+
+      const collapsed = sidebar.classList.toggle("collapsed");
+      if (collapsed) {
+        btn.textContent = "→";
+        btn.title = "Expand sidebar";
+      } else {
+        btn.textContent = "←";
+        btn.title = "Collapse sidebar";
+      }
+
+      // Refresh CodeMirror width after layout change
+      if (window.editor && editor.refresh) {
+        setTimeout(() => editor.refresh(), 0);
+      }
+    }
+
+
+    // Toggle chat or editor sections
+    function toggleSection(section) {
+      var sectionElement, contentElement, toggleBtn;
+      
+      if (section === "chat") {
+        sectionElement = document.getElementById("chatSection");
+        contentElement = document.getElementById("chatContent");
+        toggleBtn = document.getElementById("chatToggle");
+      }
+      
+      if (sectionElement.classList.contains("collapsed")) {
+        sectionElement.classList.remove("collapsed");
+        contentElement.style.display = "flex";
+        toggleBtn.textContent = "−";
+        toggleBtn.title = "Collapse " + section;
+        
+      } else {
+        sectionElement.classList.add("collapsed");
+        contentElement.style.display = "none";
+        toggleBtn.textContent = "+";
+        toggleBtn.title = "Expand " + section;
+      }
+    }
+
+    // Change programming language mode for the editor
+    function changeLanguage() {
+      const val = document.getElementById("languageSelect").value; // python | java | cpp
+      const modeMap = { python: "python", java: "text/x-java", cpp: "text/x-c++src" };
+      editor.setOption("mode", modeMap[val]);
+
+      // Load per-language editor buffer
+      loadEditorState();
+
+      // Also restore per-language output for this assignment
+      const proj = projects.find(p => p.id === currentProjectId);
+      const fn = currentFilename();
+      const key = `lt_out_${proj.assignment_id}__${fn}`;
+      const savedOut = proj?.outputsByFile?.[fn] || "";
+      showOutput(savedOut);
+    }
+
+
+
+    // Change editor theme
+  function downloadCode(opts = { includeOutput: false }) {
+    const code = (typeof editor !== "undefined") ? editor.getValue() : "";
+    let text = code || "";
+    if (opts.includeOutput) {
+      const out = document.getElementById("output")?.textContent || "";
+      const divider = "\n\n" + "=".repeat(24) + " OUTPUT " + "=".repeat(24) + "\n";
+      text += divider + out;
+    }
+    if (!text.trim()) {
+      showNotification("Nothing to download yet.", true);
+      return;
+    }
+
+    const lang = (document.getElementById("languageSelect")?.value || "").toLowerCase();
+    const extMap = {
+      python: "py",
+      java: "java",
+      cpp: "cpp"
+    };
+    const ext = extMap[lang] || "txt";
+
+    const proj = projects.find(p => p.id === currentProjectId);
+    const base = (proj?.name || "code").replace(/[^\w.-]/g, "_");
+    const ts = new Date().toISOString().replace(/[:.]/g, "-");
+    const filename = `${base}_${ts}.${ext}`;
+
+    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+
+    showNotification("Download started");
+  }
+
+
+    // Display a temporary toast notification for success or error feedback
+    function showNotification(message, isError) {
+      const notification = document.createElement("div");
+      notification.className = "notification " + (isError ? "error" : "success");
+      notification.textContent = message;
+      document.body.appendChild(notification);
+      
+      setTimeout(function() {
+        notification.classList.add("show");
+      }, 10);
+      
+      setTimeout(function() {
+        notification.classList.remove("show");
+        setTimeout(function() {
+          notification.remove();
+        }, 300);
+      }, 3000);
+    }
+
+    // Handle Enter key press in input
+    function handleKeyPress(event) {
+      if (event.key === "Enter") {
+        sendMessage();
+      }
+    }
+
+    // Show error message
+    function showError(message, target) {
+      target = target || "messages";
+      const container = document.getElementById(target);
+      const errorMsg = document.createElement("div");
+      errorMsg.className = "error-message";
+      errorMsg.innerHTML = "<strong>&#9888; Error:</strong> " + message;
+      if (target === "messages") {
+        container.appendChild(errorMsg);
+        container.scrollTop = container.scrollHeight;
+      } else {
+        container.textContent = message;
+        container.className = "error-text";
+      }
+      setTimeout(function() { if (target === "messages") errorMsg.remove(); }, 5000);
+    }
+
+    // Chat - user/AI bubbles with code attachment support
+    // Main chat send handler:
+    // - Renders the user message
+    // - Sends question, code, and context to /ask
+    // - Renders the AI response and updates project chat history
+    function sendMessage() {
+      let input = document.getElementById("userInput").value;
+      if (input.trim() === "") return;
+
+      const project = projects.find(p => p.id === currentProjectId);
+      if (!project) return;
+
+      const messagesEl = document.getElementById("messages");
+
+      // render the user's bubble immediately
+      const userMsg = document.createElement("div");
+      userMsg.className = "message user";
+      userMsg.innerHTML = "<div class='message-content'>" + escapeHtml(input) + "</div>";
+      messagesEl.appendChild(userMsg);
+
+      // keep memory in sync for sidebar counts
+      project.chatHistory = project.chatHistory || [];
+      project.chatHistory.push({ isUser: true, content: input });
+
+      document.getElementById("userInput").value = "";
+      showLoadingWithTimeout();
+
+      const code = (typeof editor !== "undefined") ? (editor.getValue() || "") : "";
+      const language = (document.getElementById("languageSelect")?.value || "").toLowerCase();
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+      const body = {
+        question: input,
+        projectId: currentProjectId,               // legacy
+        session_id: project.session_id || "",
+        code: code || null,
+        language: language,
+        assignment_id: project.assignment_id || ""
+      };
+
+      if (isUUID(project.assignment_id)) {
+        body.assignment_id = project.assignment_id;
+      }
+
+
+      fetch("/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        signal: controller.signal
+      })
+      .then(r => {
+        clearTimeout(timeoutId);
+        if (!r.ok) throw new Error("Server error: " + r.status);
+        return r.json();
+      })
+      .then(data => {
+        hideLoadingAndClearTimeout();
+
+        const aiMsg = document.createElement("div");
+        aiMsg.className = "message ai";
+        const answer = escapeHtml(data.answer).replace(/\n/g, '<br>');
+        aiMsg.innerHTML = "<div class='message-content'>" + answer + "</div>";
+        messagesEl.appendChild(aiMsg);
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+
+        // keep memory in sync for sidebar counts
+        project.chatHistory.push({ isUser: false, content: data.answer || "" });
+
+        // refresh left list so the “X messages” label updates
+        renderProjects();
+      })
+      .catch(err => {
+        hideLoadingAndClearTimeout();
+        console.error(err);
+        const errDiv = document.createElement("div");
+        errDiv.className = "message ai";
+        errDiv.innerHTML = "<div class='message-content'>Sorry, there was a problem sending your message.</div>";
+        messagesEl.appendChild(errDiv);
+      });
+    }
+
+
+    // Return a safe assignment id ("" if we can’t find one)
+    function getActiveAssignmentId() {
+      if (window.currentProject && window.currentProject.assignment_id) {
+        return String(window.currentProject.assignment_id);
+      }
+      const el = document.querySelector('[data-assignment-id]');
+      if (el && el.getAttribute('data-assignment-id')) {
+        return el.getAttribute('data-assignment-id');
+      }
+      return "";
+    }
+
+    // Make sure a DB chat session exists (no-op if it already does)
+    async function ensureSession(assignment_id) {
+      if (!assignment_id) return;
+      try {
+        await fetch("/start_session", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({ assignment_id })
+        });
+      } catch (e) {
+        console.warn("start_session failed (continuing):", e);
+      }
+    }
+
+    // Convenience wrapper to read the assignment_id from the active project, if any
+    function currentAssignmentId(){
+      const proj = projects.find(p => p.id === currentProjectId);
+      return proj?.assignment_id || "";
+    }
+
+    // Execute the current code through the backend runner for the active assignment
+    async function runCode() {
+      // Collect code + language from existing UI
+      const code = (typeof editor !== "undefined") ? (editor.getValue() || "") : "";
+      const language = (document.getElementById("languageSelect")?.value || "python").toLowerCase(); // "python" | "java" | "cpp"
+
+      // Get the assignment id from existing state
+      const proj = projects.find(p => p.id === currentProjectId);
+      const assignmentId = proj?.assignment_id || currentAssignmentId() || "";
+
+      if (!assignmentId) {
+        showOutput("⚠️ Please open an assignment first (Account → Live Assignments → Open).");
+        return;
+      }
+
+      // Ensure the DB session exists for selected assignment
+      try {
+        await fetch("/start_session", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ assignment_id: assignmentId })
+        });
+      } catch (_) { /* non-fatal */ }
+
+      // Call the backend runner
+      let res, raw, data;
+      try {
+        res = await fetch("/run_code", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ language, code, assignment_id: assignmentId })
+        });
+        raw = await res.text();
+        try { data = JSON.parse(raw); } catch { /* keep raw for error */ }
+      } catch (e) {
+        showOutput("✖ Network error while running code.");
+        console.error(e);
+        return;
+      }
+
+      // Robust handling
+      if (!res.ok || !data) {
+        showOutput(`Run failed (HTTP ${res?.status}).\n\n${raw || ""}`);
+        return;
+      }
+
+      if (data.ok === false) {
+        showOutput(data.stderr || data.error || "Run failed.");
+        return;
+      }
+
+      // Display result
+      const out = [];
+      if (data.stdout) out.push(data.stdout);
+      if (data.stderr) out.push("\n[stderr]\n" + data.stderr);
+      const display = out.join("").trim();
+      showOutput(display);
+
+      // Save per-assignment, per-file
+      if (proj) {
+        const fn = currentFilename();
+        const key = `lt_out_${proj.assignment_id}__${fn}`;
+        localStorage.setItem(key, display);
+        proj.outputsByFile[fn] = display;
+      }
+    }
+
+
+
+    // Update the Output panel with the given text, replacing any existing content
+    function showOutput(text) {
+      const out = document.getElementById("output");
+      if (out) out.textContent = text ?? "";
+    }
+
+
+    // Trigger the hidden file input so the student can choose a file to upload for the active assignment
+    function triggerFileUpload() {
+      document.getElementById("fileInput").click();
+    }
+
+    // Upload a selected file and associate it with the active assignment
+    function uploadFile() {
+      const fileInput = document.getElementById("fileInput");
+      const statusDiv = document.getElementById("uploadStatus");
+      const file = fileInput.files[0];
+
+      if (!file) {
+        statusDiv.textContent = "⚠️ Please select a file.";
+        statusDiv.className = "warning-text";
+        return;
+      }
+
+      // Make sure an assignment is selected
+      const aid = (typeof currentAssignmentId === "function") ? currentAssignmentId() : "";
+      if (!aid) {
+        statusDiv.textContent = "⚠️ Please select an assignment before uploading a file.";
+        statusDiv.className = "warning-text";
+        return;
+      }
+
+      statusDiv.textContent = "⏳ Uploading " + file.name + "...";
+      statusDiv.className = "info-text";
+      showLoading();
+
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("assignment_id", aid);
+
+      const url = `/upload?assignment_id=${encodeURIComponent(aid)}`;
+
+      fetch(url, { method: "POST", body: formData })
+        .then((response) => {
+          if (!response.ok) throw new Error("Upload failed");
+          return response.json();
+        })
+        .then((data) => {
+          hideLoading();
+          statusDiv.textContent = "✔ " + (data.message || "Upload complete");
+          statusDiv.className = "success-text";
+          fileInput.value = "";
+
+          // refresh compiler file list without touching editor paths
+          setTimeout(() => {
+            if (typeof refreshFiles === "function") refreshFiles();
+          }, 250);
+
+          setTimeout(() => {
+            statusDiv.textContent = "";
+            statusDiv.className = "";
+          }, 3000);
+        })
+        .catch((err) => {
+          hideLoading();
+          statusDiv.textContent = "✖ Upload failed. Please try again.";
+          statusDiv.className = "error-text";
+          console.error("Error:", err);
+        });
+    }
+
+
+
+    // Utility to escape HTML
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // File paths match backend folder layout
+    function _safeKey(s){ return (s||"").replace(/[^a-zA-Z0-9._-]/g, "_"); }
+
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        runCode();
+      }
+    });
+
+    // Focus input on load and initialize
+    window.addEventListener('load', function() {
+      document.getElementById('userInput').focus();
+      initializeProjects();
+
+      const sel = document.getElementById('fileSelect');
+      if (sel) sel.addEventListener('change', handleFileSelectChange);
+    });
+
+    // === Account dropdown logic (student) ===
+    // Student account dropdown initialization:
+    // - Toggles the profile menu
+    // - Loads /api/me to personalize name, email, and avatar initials.
+    (function initAccountMenu(){
+      const profile = document.getElementById('userProfile');
+      const menu = document.getElementById('accountMenu');
+      if(!profile || !menu) return;
+
+      function toggle() {
+        const shown = menu.classList.toggle('show');
+        profile.setAttribute('aria-expanded', shown ? 'true' : 'false');
+      }
+      profile.addEventListener('click', (e)=>{ e.stopPropagation(); toggle(); });
+      profile.addEventListener('keydown', (e)=>{ if(e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
+
+      document.addEventListener('click', (e)=>{
+        if (!menu.contains(e.target) && !profile.contains(e.target)) {
+          menu.classList.remove('show');
+          profile.setAttribute('aria-expanded', 'false');
+        }
+      });
+      
+      // Load identity + populate lists
+      fetch('/api/me').then(r=>r.json()).then(d=>{
+        const isAuthed = d.auth === true || d.logged_in === true;
+        if (!isAuthed || d.role !== 'student') return;
+        
+        const nameEl = document.querySelector('.user-info .user-name');
+        const emailEl = document.querySelector('.user-info .user-email');
+        const avatarEl = document.querySelector('.user-avatar');
+        
+        const displayName = d.name || d.user_id || 'Student';
+        const email = d.email || d.user_id || '';
+        
+        if (nameEl) nameEl.textContent = displayName;
+        if (emailEl) emailEl.textContent = email;
+        
+        if (avatarEl) {
+          const init = displayName.split(' ').map(x=>x[0]).join('').slice(0,2).toUpperCase();
+          avatarEl.textContent = init;
+        }
+        
+      }).catch(()=>{});
+    })();
+
+  
+
+    // === Files panel logic ===
+    function refreshFiles(){
+      const proj = projects.find(p => p.id === currentProjectId);
+      const aid = encodeURIComponent(proj?.assignment_id || "");
+      if (!aid) { populateFileDropdown([]); return; }
+
+      fetch("/api/student/files?assignment_id=" + aid)
+        .then(r => r.json())
+        .then(d => {
+          // remember the assignment key for path building
+          if (proj && d.assignment && d.assignment.key) {
+            proj.assignment_key = d.assignment.key;
+          }
+
+
+          // normalize rows expected by the dropdown code
+          const shared = (Array.isArray(d.shared) ? d.shared : []).map(f => ({
+            kind: "shared",
+            name: f.name,            // filename only
+            mimetype: f.mimetype || "",
+            size: f.size || 0
+          }));
+
+          // handle user upload files
+          const user = (Array.isArray(d.user) ? d.user : []).map(f => ({
+            kind: "user",
+            name: f.name,
+            mimetype: f.mimetype || "",
+            size: f.size || 0
+          }));
+
+          populateFileDropdown([...shared, ...user]);
+        })
+        .catch(err => {
+          console.error("files error", err);
+          populateFileDropdown([]);
+        });
+    }
+
+// Change the CodeMirror theme based on the Theme selector
+function changeTheme(){
+  const val = document.getElementById("themeSelect").value; // default | monokai | dracula
+  editor.setOption("theme", val);
+}
+
+// Convenience wrapper to open a file using existing logic
+function openFileInEditor(scope, name){
+  openFileInEditorById(scope, name);
+}
+
+// Fetch a file's content from the backend and insert it into the editor
+function openFileInEditorById(scope, id){
+  const aid = currentAssignmentId();
+  const params = new URLSearchParams({ scope, id });
+  if (aid) params.set("assignment_id", aid);
+  fetch("/api/student/file?" + params.toString())
+    .then(r=>r.json())
+    .then(data=>{
+      if (!data || data.error){ showNotification(data?.error||"Could not open file", true); return; }
+      const existing = editor.getValue();
+      const header = `# ==== ${scope === "shared" ? "shared_files/" : ""}${data.name} ====\n`;
+      editor.setValue(existing ? (existing + "\n\n" + header + data.content) : (header + data.content));
+      showNotification(`Inserted content of ${data.name} into editor`);
+    });
+}
+
+    // Insert a path string for a shared/user file at the editor cursor position for easy file I/O usage
+    function insertPathAtCursor(scope, name){
+      const proj = projects.find(p => p.id === currentProjectId);
+      const uuid = proj?.assignment_id || "";
+      if (!uuid) { showNotification("No assignment selected.", true); return; }
+      const base = (scope === "shared") ? `shared_files/${uuid}/` : "";
+      const path = `${base}${name}`;
+      const doc = editor.getDoc();
+      doc.replaceRange(`"${path}"`, doc.getCursor());
+      showNotification(`Inserted path: ${path}`);
+    }
+
+    // ===== Files: Path dropdown =====
+    window._filesIndex = [];
+
+    // Populate the Files dropdown with shared and user-uploaded files grouped into optgroups
+    function populateFileDropdown(rows){
+      window._filesIndex = Array.isArray(rows) ? rows.slice() : [];
+      const sel = document.getElementById('fileSelect');
+      if (!sel) return;
+
+      const prev = sel.value;
+      sel.innerHTML = '';
+
+      // placeholder
+      const opt0 = document.createElement('option');
+      opt0.value = '';
+      opt0.textContent = 'Path';
+      sel.appendChild(opt0);
+
+      const shared = window._filesIndex.filter(f => f.kind === 'shared');
+      const user   = window._filesIndex.filter(f => f.kind === 'user');
+
+      if (shared.length){
+        const g1 = document.createElement('optgroup');
+        g1.label = 'Shared files';
+        shared.forEach(f=>{
+          const o = document.createElement('option');
+          o.value = `shared:::${f.name}`;
+          o.textContent = f.name;
+          g1.appendChild(o);
+        });
+        sel.appendChild(g1);
+      }
+
+      if (user.length){
+        const g2 = document.createElement('optgroup');
+        g2.label = 'Your uploads';
+        user.forEach(f=>{
+          const o = document.createElement('option');
+          o.value = `user:::${f.name}`;
+          o.textContent = f.name;
+          g2.appendChild(o);
+        });
+        sel.appendChild(g2);
+      }
+
+      if ([...sel.options].some(o => o.value === prev)) sel.value = prev;
+      else sel.value = '';
+    }
+
+
+    function handleFileSelectChange(){
+      const sel = document.getElementById('fileSelect');
+      if (!sel) return;
+
+      const val = sel.value || '';
+      if (!val) return; // placeholder
+
+      const [scope, name] = val.split(':::');
+      const proj = projects.find(p => p.id === currentProjectId);
+      const uuid = proj?.assignment_id || "";
+
+      if (scope === 'shared' && !uuid) {
+        showNotification("No assignment selected.", true);
+        sel.value = ''; sel.selectedIndex = 0; sel.blur();
+        return;
+      }
+
+      const key = proj?.assignment_key || proj?.assignment_id;
+      const path = (scope === 'shared') ? `shared_files/${key}/${name}` : name;
+
+
+      const doc = editor.getDoc();
+      doc.replaceRange(`"${path}"`, doc.getCursor());
+      showNotification(`Inserted path: ${path}`);
+
+      sel.value = '';
+      sel.selectedIndex = 0;
+      sel.blur();
+    }
+
+    // Safe wrapper for fetch that always shows/hides the loading overlay and parses JSON
+    async function fetchJSON(url, opts){
+      showLoading();
+      try {
+        const r = await fetch(url, opts);
+        return await r.json();
+      } catch(err){
+        console.error("fetchJSON error:", err);
+        throw err;
+      } finally {
+        hideLoading();
+      }
+    }
+
+    // Safety: if anything went wrong earlier, kill the overlay when the page finishes loading
+    window.addEventListener('load', hideLoading);
+
+    // Catch JS errors so one error doesn't keep the overlay up forever
+    window.addEventListener('error', (e) => {
+      console.error('[JS ERROR]', e.message);
+      hideLoading();
+    });
+   
+  // Initialize the draggable splitter between Chat and Code Editor
+  (function initStudentSplit(){
+    const split = document.getElementById('chatEditorSplit');
+    const chat  = document.getElementById('chatSection');
+    const edit  = document.getElementById('editorSection');
+    const bar   = document.getElementById('splitterCE');
+    if(!split || !chat || !edit || !bar) return;
+
+    const asn = window.currentAssignmentId || 'global';
+    const KEY = `lt_split_chat_editor_${asn}`;
+    const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+    const apply = (pct) => {
+      chat.style.flex = `0 0 ${pct}%`;
+      edit.style.flex = `0 0 ${100 - pct}%`;
+      bar.setAttribute('aria-valuenow', String(Math.round(pct)));
+    };
+
+    let pct = Number(localStorage.getItem(KEY)) || 50;
+    apply(pct);
+
+    let dragging = false;
+    const start = (e)=>{ dragging = true; document.body.classList.add('resizing'); e.preventDefault(); };
+    const move  = (e)=>{
+      if(!dragging) return;
+      const rect = split.getBoundingClientRect();
+      const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
+      pct = clamp((x/rect.width)*100, 20, 80);
+      apply(pct);
+    };
+    const end = () => {
+      if (!dragging) return;
+      dragging = false;
+      document.body.classList.remove('resizing');
+      localStorage.setItem(KEY, String(Math.round(pct)));
+      if (window.editor && typeof editor.refresh === "function") {
+        requestAnimationFrame(() => editor.refresh());
+      }
+    };
+
+
+    bar.addEventListener('mousedown', start);
+    bar.addEventListener('touchstart', start, {passive:false});
+    window.addEventListener('mousemove', move);
+    window.addEventListener('touchmove', move, {passive:false});
+    window.addEventListener('mouseup', end);
+    window.addEventListener('touchend', end);
+
+    bar.addEventListener('keydown', (e)=>{
+      if (e.key === 'ArrowLeft')  { pct = clamp(pct-2, 20, 80); apply(pct); e.preventDefault(); }
+      if (e.key === 'ArrowRight') { pct = clamp(pct+2, 20, 80); apply(pct); e.preventDefault(); }
+      if (e.key === 'Home')       { pct = 20; apply(pct); e.preventDefault(); }
+      if (e.key === 'End')        { pct = 80; apply(pct); e.preventDefault(); }
+      localStorage.setItem(KEY, String(Math.round(pct)));
+    });
+
+    window.addEventListener('resize', ()=>apply(pct));
+  })();
+
+
+
+  </script>
+  
+  <!-- Driver.js library -->
+<link rel="stylesheet" href="{{ url_for('static', filename='css/driver.css') }}">
+<script src="{{ url_for('static', filename='js/driver.js') }}"></script>
+<script src="{{ url_for('static', filename='js/site-tour.js') }}" defer></script>
+
+
+
+
+</body>
+</html>

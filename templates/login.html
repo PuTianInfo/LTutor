@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>LeafTutor - Sign In</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='login.css') }}">
+</head>
+<body>
+  <div class="login-container">
+    <div class="login-card">
+      <div class="logo-section">
+        <h1>🎓 LeafTutor</h1>
+        <p class="subtitle">Your AI-Powered Coding Assistant</p>
+      </div>
+
+      <!-- Flash messages (for invalid password, etc.) -->
+      {% with msgs = get_flashed_messages(with_categories=true) %}
+        {% if msgs %}
+          <ul class="flashes">
+            {% for cat, msg in msgs %}
+              <li class="flash {{ cat }}">{{ msg }}</li>
+            {% endfor %}
+          </ul>
+        {% endif %}
+      {% endwith %}
+
+
+      <form id="loginForm" novalidate>
+        <div class="form-group">
+          <label for="username">Username or Email</label>
+          <input 
+            id="username" 
+            name="username" 
+            placeholder="Enter username or email" 
+            required 
+            autocomplete="username"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input 
+            id="password" 
+            name="password" 
+            type="password" 
+            placeholder="Enter password" 
+            required 
+            autocomplete="current-password"
+          />
+        </div>
+
+        <button type="submit" class="login-btn">
+          <span class="btn-text">Sign In</span>
+          <span class="btn-icon">→</span>
+        </button>
+      </form>
+
+      <div class="demo-info">
+        <p><strong>Demo Accounts:</strong></p>
+        <p>Student: <code>student1</code> / <code>pass1234</code></p>
+        <p>Instructor: <code>instructor1</code> / <code>pass1234</code></p>
+        <p style="margin-top:8px;">New instructor? <a href="/instructor/signup">Create an account</a></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading Overlay -->
+  <div id="loadingOverlay" class="loading-overlay">
+    <div class="spinner"></div>
+  </div>
+<script>
+  // overlay helpers
+  const overlay = document.getElementById('loadingOverlay');
+  function showLoading(){ overlay && overlay.classList.add('show'); }
+  function hideLoading(){ overlay && overlay.classList.remove('show'); }
+
+  // disable/enable button to avoid double submits
+  function setSubmitting(on){
+    const btn = document.querySelector('#loginForm .login-btn');
+    if (!btn) return;
+    btn.disabled = !!on;
+    btn.style.opacity = on ? 0.7 : 1;
+  }
+
+  async function doLogin(usernameOrEmail, password){
+    showLoading();
+    setSubmitting(true);
+    try {
+      const res = await fetch("/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        credentials: "same-origin",   // ensure cookies/sessions are sent
+        body: JSON.stringify({
+          // send both keys; backend accepts either
+          username: usernameOrEmail,
+          email: usernameOrEmail,
+          password
+        })
+      });
+
+      // If server issued a redirect for some reason, follow it
+      if (res.redirected) {
+        window.location = res.url;
+        return;
+      }
+
+      // Try JSON; if not JSON, fall back to text (to catch HTML error pages)
+      const ct = res.headers.get("content-type") || "";
+      const data = ct.includes("application/json") ? await res.json() : { ok:false, error: await res.text() };
+
+      if (data.ok && data.next) {
+        window.location = data.next;
+        return;
+      }
+
+      alert(data.error || "Login failed");
+    } catch (err) {
+      console.error("Login fetch error:", err);
+      alert("Network error while logging in.");
+    } finally {
+      hideLoading();
+      setSubmitting(false);
+    }
+  }
+
+  // intercept the form submit and call doLogin
+  const form = document.getElementById('loginForm');
+  form?.addEventListener('submit', (e) => {
+    e.preventDefault(); // stop native POST
+    const u = (document.getElementById('username')?.value || "").trim();
+    const p = (document.getElementById('password')?.value || "");
+    if (!u || !p) return; // basic guard
+    doLogin(u, p);
+  });
+    // Safety: ensure overlay is hidden when the login page loads/reloads
+  window.addEventListener('DOMContentLoaded', () => {
+    const ov = document.getElementById('loadingOverlay');
+    if (ov) ov.classList.remove('show');
+  });
+
+  // Extra guard: if an earlier error occurred, hide on full load too
+  window.addEventListener('load', () => {
+    const ov = document.getElementById('loadingOverlay');
+    if (ov) ov.classList.remove('show');
+  });
+
+  // If any JS error happens, don’t leave the overlay up
+  window.addEventListener('error', () => {
+    const ov = document.getElementById('loadingOverlay');
+    if (ov) ov.classList.remove('show');
+  });
+</script>
+
+
+</body>
+</html>

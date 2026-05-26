@@ -1,0 +1,111 @@
+/* static/student.css — student-only layout */
+.student-page {
+  --nav-h: 72px;
+  --g: 16px;
+  --handle-w: 14px;
+  --rail-gap: 8px;
+}
+
+/* 3-column shell for student: Sidebar | Chat | Editor */
+.student-page .container {
+  display: flex;
+  align-items: stretch !important;
+  height: calc(100svh - var(--nav-h)) !important;
+  gap: var(--g);
+  padding: var(--g) !important;
+  box-sizing: border-box;
+  max-width: none;
+  margin: 0;
+  background: transparent;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.sidebar {
+  flex: 0 0 280px;
+  min-width: 280px;
+  margin-right: 20px;
+  background: #fff;
+  border-right: 2px solid #e0e0e0;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 2px 0 10px rgba(0,0,0,.05);
+  transition: flex-basis .25s ease, margin-right .25s ease;
+  border-radius: 16px;
+  overflow: hidden;
+  margin-top: 0;
+}
+
+.student-page .sidebar.collapsed {
+  flex: 0 0 52px;
+  min-width: 52px;
+  margin-right: 12px;
+  padding: 0;
+  border-right: 0;
+  overflow: hidden;
+}
+
+
+/* Layout containers */
+.student-page #chatEditorSplit.lt-split{
+  display:flex; align-items:stretch;
+  height: 100% !important;
+  width: 100% !important;
+  flex: 1 1 auto;
+  gap: calc(var(--g) - var(--handle-w));
+  min-height: 0;
+  padding-right: calc(var(--g) + var(--handle-w) / 2) !important;
+  box-sizing: border-box;
+}
+
+.student-page #chatSection,
+.student-page #editorSection,
+.student-page .sidebar {
+  margin: 0 !important;
+  max-width: 100% !important;
+}
+
+.student-page .sidebar,
+.student-page #chatEditorSplit.lt-split {
+  height: 100% !important;
+  margin-bottom: 0 !important;
+  min-height: 0 !important;
+}
+
+.student-page .sidebar,
+.student-page #chatEditorSplit.lt-split,
+.student-page #chatSection,
+.student-page #editorSection {
+  min-height: 0 !important;
+}
+
+/* Splitter */
+.student-page .splitter{
+  position: relative;
+  width: var(--handle-w);
+  min-width: var(--handle-w);
+  margin: 0;
+  cursor: col-resize;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #222 0%, #1b1b1b 100%);
+  border: 1px solid #3a3a3a;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.06);
+  margin-inline: calc(var(--rail-gap) / 2);
+}
+.student-page .splitter::before{
+  content:"";
+  position:absolute; top:8px; bottom:8px; left:5px; right:5px;
+  border-radius:8px;
+  background:
+    linear-gradient(#98d678,#98d678) left 5px / 2px 100% no-repeat,
+    linear-gradient(#98d678,#98d678) right 5px / 2px 100% no-repeat;
+  opacity:.95;
+}
+.student-page .splitter:hover{
+  border-color:#5a5a5a;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.08), 0 0 0 3px rgba(180,180,180,.15);
+}
+.student-page body.resizing, 
+.student-page body.resizing *{
+  user-select:none !important; cursor: col-resize !important; overflow: hidden;
+}

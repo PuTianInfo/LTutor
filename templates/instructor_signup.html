@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>LeafTutor – Instructor Sign Up</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='login.css') }}">
+</head>
+<body>
+  <div class="login-container">
+    <div class="login-card">
+      <div class="logo-section">
+        <h1>🎓 LeafTutor</h1>
+        <p class="subtitle">Create your instructor account</p>
+      </div>
+
+      <form id="signupForm" onsubmit="handleSignup(event)">
+        <div class="form-group">
+          <label for="first_name">First Name</label>
+          <input id="first_name" name="first_name" required />
+        </div>
+
+        <div class="form-group">
+          <label for="last_name">Last Name</label>
+          <input id="last_name" name="last_name" required />
+        </div>
+
+        <div class="form-group">
+          <label for="institution">Institution</label>
+          <input id="institution" name="institution" placeholder="e.g., University of X" />
+        </div>
+
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input id="email" type="email" name="email" required autocomplete="email" />
+        </div>
+
+        <div class="form-group">
+          <label for="username">Username</label>
+          <input id="username" name="username" required autocomplete="username" />
+        </div>
+
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input id="password" type="password" name="password" required autocomplete="new-password" />
+        </div>
+
+        <div id="errorMessage" class="error-message" style="display:none;"></div>
+
+        <button type="submit" class="login-btn">
+          <span class="btn-text">Create Account</span>
+          <span class="btn-icon">→</span>
+        </button>
+      </form>
+
+      <div class="demo-info">
+        <p>Already have an account? <a href="/">Sign in</a></p>
+      </div>
+    </div>
+  </div>
+
+  <div id="loadingOverlay" class="loading-overlay" style="display:none;">
+    <div class="spinner"></div>
+  </div>
+
+  <script>
+    function showError(msg){
+      const e = document.getElementById('errorMessage');
+      e.textContent = msg;
+      e.style.display = 'block';
+      e.style.animation = 'shake .5s';
+      setTimeout(()=> e.style.animation = '', 500);
+    }
+    function handleSignup(ev){
+      ev.preventDefault();
+      const body = {
+        first_name:  document.getElementById('first_name').value.trim(),
+        last_name:   document.getElementById('last_name').value.trim(),
+        institution: document.getElementById('institution').value.trim(),
+        email:       document.getElementById('email').value.trim(),
+        username:    document.getElementById('username').value.trim(),
+        password:    document.getElementById('password').value
+      };
+      document.getElementById('loadingOverlay').style.display = 'flex';
+      fetch('/api/instructor/signup', {
+        method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body)
+      })
+      .then(async r => {
+        const data = await r.json().catch(()=> ({}));
+        if(!r.ok){ throw new Error(data.error || 'Sign up failed'); }
+        return data;
+      })
+      .then(() => {
+        document.getElementById('loadingOverlay').style.display = 'none';
+        alert('Account created! Please check your email to confirm your account.');
+        window.location.href = '/';
+      })
+      .catch(err => {
+        document.getElementById('loadingOverlay').style.display = 'none';
+        showError(err.message || 'Sign up failed');
+      });
+    }
+  </script>
+</body>
+</html>
